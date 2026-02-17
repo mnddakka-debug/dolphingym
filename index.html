@@ -1,0 +1,87 @@
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dolphin Gym</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Cairo:wght@300;400;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        background-color: #000000;
+        color: #ffffff;
+        font-family: 'Inter', 'Cairo', sans-serif;
+        overflow-x: hidden;
+      }
+      .font-arabic { font-family: 'Cairo', sans-serif; }
+      .blue-gradient {
+        background: linear-gradient(135deg, #3b82f6, #60a5fa, #2563eb, #93c5fd, #1d4ed8);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
+      .gold-gradient {
+        background: linear-gradient(135deg, #bf953f, #fcf6ba, #b38728, #fbf5b7, #aa771c);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
+      .blue-bg {
+        background: linear-gradient(135deg, #1e40af, #3b82f6);
+      }
+      .gold-bg {
+        background: linear-gradient(135deg, #d4af37, #f1c40f);
+      }
+      .blue-glow {
+        box-shadow: 0 0 25px rgba(59, 130, 246, 0.4);
+      }
+      .gold-glow {
+        box-shadow: 0 0 20px rgba(212, 175, 55, 0.3);
+      }
+      .shield-shape {
+        clip-path: polygon(0% 0%, 100% 0%, 100% 80%, 50% 100%, 0% 80%);
+      }
+      @keyframes bounce-subtle {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-5px); }
+      }
+      .animate-bounce-subtle {
+        animation: bounce-subtle 2s infinite ease-in-out;
+      }
+      @keyframes scan {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(256px); }
+      }
+      /* Hide scrollbar */
+      ::-webkit-scrollbar {
+        display: none;
+      }
+      body {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "@google/genai": "https://esm.sh/@google/genai@^1.37.0",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+    "react/": "https://esm.sh/react@^19.2.3/",
+    "react": "https://esm.sh/react@^19.2.3",
+    "recharts": "https://esm.sh/recharts@^3.6.0",
+    "lucide-react": "https://esm.sh/lucide-react@^0.562.0",
+    "express": "https://esm.sh/express@^5.2.1",
+    "jsonwebtoken": "https://esm.sh/jsonwebtoken@^9.0.3",
+    "uuid": "https://esm.sh/uuid@^13.0.0",
+    "jsqr": "https://esm.sh/jsqr@1.4.0"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
+</head>
+  <body>
+    <div id="root"></div>
+  <script type="module" src="/index.tsx"></script>
+</body>
+</html>

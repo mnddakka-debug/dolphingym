@@ -1,0 +1,8 @@
+{
+  "name": "Dolphin Gym - Management Suite",
+  "description": "A production-ready, bilingual (Arabic/English) gym management system featuring workout tracking, real-time analytics, equipment management, and a Gemini-powered AI personal coach.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}
