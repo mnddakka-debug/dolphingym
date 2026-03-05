@@ -206,7 +206,7 @@ ALWAYS respond in ${isArabic ? 'Arabic' : 'English'}.`;
     // 2️⃣ Fallback: Gemini API (works on Netlify / mobile)
     if (!aiText) {
       try {
-        const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+        const apiKey = import.meta.env.VITE_GEMINI_API_KEY || 'AIzaSyDgh-bx_t04TBzCSmPng_yH6GaQeM3acoQ';
         if (apiKey) {
           // Build history: alternate user/model, always start with user
           const historyMsgs = newMessagesList
