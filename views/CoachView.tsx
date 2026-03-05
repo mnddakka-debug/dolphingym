@@ -207,39 +207,34 @@ ALWAYS respond in ${isArabic ? 'Arabic' : 'English'}.`;
       }
     }
 
-    // 2️⃣ Gemini API — primary on production (Netlify/mobile), fallback in dev
+    // 2️⃣ Pollinations.AI — free, no key, works globally from browser
     if (!aiText) {
       try {
-        const historyMsgs = newMessagesList
-          .filter((m, idx) => !(m.role === 'coach' && idx === 0))
-          .map(m => ({
-            role: m.role === 'user' ? 'user' : 'model',
-            parts: [{ text: m.text }]
-          }));
-        const safeHistory = historyMsgs.length > 0 && historyMsgs[0].role === 'user'
-          ? historyMsgs
-          : [{ role: 'user', parts: [{ text: userMessage }] }];
-
-        const geminiRes = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              contents: safeHistory,
-              systemInstruction: { parts: [{ text: systemPrompt }] },
-              generationConfig: { temperature: 0.8, maxOutputTokens: 512 }
-            })
-          }
-        );
-        if (geminiRes.ok) {
-          const gData = await geminiRes.json();
-          aiText = gData.candidates?.[0]?.content?.parts?.[0]?.text || null;
+        const pollinationsRes = await fetch('https://text.pollinations.ai/openai', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model: 'openai',
+            messages: [
+              { role: 'system', content: systemPrompt },
+              ...newMessagesList
+                .filter((m, idx) => !(m.role === 'coach' && idx === 0))
+                .map(m => ({ role: m.role === 'user' ? 'user' : 'assistant', content: m.text })),
+            ],
+            temperature: 0.8,
+            max_tokens: 500,
+            stream: false,
+            private: true
+          })
+        });
+        if (pollinationsRes.ok) {
+          const pData = await pollinationsRes.json();
+          aiText = pData.choices?.[0]?.message?.content || null;
         } else {
-          console.error('Gemini error:', geminiRes.status, await geminiRes.text());
+          console.error('Pollinations error:', pollinationsRes.status);
         }
-      } catch (geminiError) {
-        console.error('Gemini error:', geminiError);
+      } catch (err) {
+        console.error('Pollinations error:', err);
       }
     }
 
