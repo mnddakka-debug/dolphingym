@@ -178,70 +178,68 @@ ALWAYS respond in ${isArabic ? 'Arabic' : 'English'}.`;
     setLoading(true);
 
     let aiText: string | null = null;
+    const GEMINI_KEY = 'AIzaSyDgh-bx_t04TBzCSmPng_yH6GaQeM3acoQ';
+    const isProduction = import.meta.env.PROD;
 
-    // 1️⃣ Try local AI backend first (works in dev mode on laptop)
-    try {
-      const response = await fetch('/api/ai/v1/chat/completions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        signal: AbortSignal.timeout(5000),
-        body: JSON.stringify({
-          model: agent.modelId,
-          conversation_id: activeSessionId,
-          stream: false,
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: userMessage },
-          ],
-        }),
-      });
-      if (response.ok) {
-        const data = await response.json();
-        aiText = data?.choices?.[0]?.message?.content || null;
+    // 1️⃣ Try local AI backend ONLY in dev mode (not on Netlify/mobile)
+    if (!isProduction) {
+      try {
+        const response = await fetch('/api/ai/v1/chat/completions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          signal: AbortSignal.timeout(4000),
+          body: JSON.stringify({
+            model: agent.modelId,
+            conversation_id: activeSessionId,
+            stream: false,
+            messages: [
+              { role: 'system', content: systemPrompt },
+              { role: 'user', content: userMessage },
+            ],
+          }),
+        });
+        if (response.ok) {
+          const data = await response.json();
+          aiText = data?.choices?.[0]?.message?.content || null;
+        }
+      } catch {
+        // Local backend unavailable — fall through to Gemini
       }
-    } catch {
-      // Local backend unavailable — fall through to Gemini
     }
 
-    // 2️⃣ Fallback: Gemini API (works on Netlify / mobile)
+    // 2️⃣ Gemini API — primary on production (Netlify/mobile), fallback in dev
     if (!aiText) {
       try {
-        const apiKey = import.meta.env.VITE_GEMINI_API_KEY || 'AIzaSyDgh-bx_t04TBzCSmPng_yH6GaQeM3acoQ';
-        if (apiKey) {
-          // Build history: alternate user/model, always start with user
-          const historyMsgs = newMessagesList
-            .filter((m, idx) => !(m.role === 'coach' && idx === 0)) // skip initial greeting
-            .map(m => ({
-              role: m.role === 'user' ? 'user' : 'model',
-              parts: [{ text: m.text }]
-            }));
-          // Ensure starts with user role (Gemini requirement)
-          const safeHistory = historyMsgs.length > 0 && historyMsgs[0].role === 'user'
-            ? historyMsgs
-            : [{ role: 'user', parts: [{ text: userMessage }] }];
+        const historyMsgs = newMessagesList
+          .filter((m, idx) => !(m.role === 'coach' && idx === 0))
+          .map(m => ({
+            role: m.role === 'user' ? 'user' : 'model',
+            parts: [{ text: m.text }]
+          }));
+        const safeHistory = historyMsgs.length > 0 && historyMsgs[0].role === 'user'
+          ? historyMsgs
+          : [{ role: 'user', parts: [{ text: userMessage }] }];
 
-          const geminiRes = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
-            {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                contents: safeHistory,
-                systemInstruction: { parts: [{ text: systemPrompt }] },
-                generationConfig: { temperature: 0.8, maxOutputTokens: 512 }
-              })
-            }
-          );
-          if (geminiRes.ok) {
-            const gData = await geminiRes.json();
-            aiText = gData.candidates?.[0]?.content?.parts?.[0]?.text || null;
-          } else {
-            const errBody = await geminiRes.text();
-            console.error('Gemini error:', geminiRes.status, errBody);
+        const geminiRes = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: safeHistory,
+              systemInstruction: { parts: [{ text: systemPrompt }] },
+              generationConfig: { temperature: 0.8, maxOutputTokens: 512 }
+            })
           }
+        );
+        if (geminiRes.ok) {
+          const gData = await geminiRes.json();
+          aiText = gData.candidates?.[0]?.content?.parts?.[0]?.text || null;
+        } else {
+          console.error('Gemini error:', geminiRes.status, await geminiRes.text());
         }
       } catch (geminiError) {
-        console.error('Gemini fallback error:', geminiError);
+        console.error('Gemini error:', geminiError);
       }
     }
 
