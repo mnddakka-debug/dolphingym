@@ -361,8 +361,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, []);
 
   const sendBrowserNotification = useCallback((title: string, body: string) => {
-    if (Notification.permission === 'granted') {
-      new Notification(title, { body, icon: 'https://cdn-icons-png.flaticon.com/512/2936/2936886.png' });
+    if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+      try {
+        new Notification(title, { body, icon: 'https://cdn-icons-png.flaticon.com/512/2936/2936886.png' });
+      } catch { /* ignore on unsupported browsers */ }
     }
   }, []);
 
