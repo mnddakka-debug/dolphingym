@@ -207,27 +207,37 @@ ALWAYS respond in ${isArabic ? 'Arabic' : 'English'}.`;
     if (!aiText) {
       try {
         const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-        if (apiKey && apiKey !== 'PLACEHOLDER_API_KEY') {
-          const chatHistory = newMessagesList
-            .filter(m => m.role !== 'coach' || newMessagesList.indexOf(m) > 0)
+        if (apiKey) {
+          // Build history: alternate user/model, always start with user
+          const historyMsgs = newMessagesList
+            .filter((m, idx) => !(m.role === 'coach' && idx === 0)) // skip initial greeting
             .map(m => ({
               role: m.role === 'user' ? 'user' : 'model',
               parts: [{ text: m.text }]
             }));
+          // Ensure starts with user role (Gemini requirement)
+          const safeHistory = historyMsgs.length > 0 && historyMsgs[0].role === 'user'
+            ? historyMsgs
+            : [{ role: 'user', parts: [{ text: userMessage }] }];
+
           const geminiRes = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
             {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
-                contents: chatHistory,
-                systemInstruction: { parts: [{ text: systemPrompt }] }
+                contents: safeHistory,
+                systemInstruction: { parts: [{ text: systemPrompt }] },
+                generationConfig: { temperature: 0.8, maxOutputTokens: 512 }
               })
             }
           );
           if (geminiRes.ok) {
             const gData = await geminiRes.json();
             aiText = gData.candidates?.[0]?.content?.parts?.[0]?.text || null;
+          } else {
+            const errBody = await geminiRes.text();
+            console.error('Gemini error:', geminiRes.status, errBody);
           }
         }
       } catch (geminiError) {
