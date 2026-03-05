@@ -1,0 +1,9 @@
+./github
+./devcontainer
+.env
+./site
+/__pycache__
+.README.md
+testcalls.py
+README.md
+image.sh

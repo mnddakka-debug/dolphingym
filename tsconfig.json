@@ -17,13 +17,18 @@
     "isolatedModules": true,
     "moduleDetection": "force",
     "allowJs": true,
+    "noEmit": true,
     "jsx": "react-jsx",
     "paths": {
       "@/*": [
         "./*"
       ]
-    },
-    
-    // Remove noEmit to allow output
-  }
+    }
+  },
+  "exclude": [
+    "node_modules",
+    "dist",
+    "backend-dist",
+    "ai-backend"
+  ]
 }

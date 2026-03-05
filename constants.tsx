@@ -1,7 +1,15 @@
-
 import React from 'react';
-import { LayoutDashboard, Dumbbell, Users, Settings, Trophy, Activity, MessageSquare, Clock3, Shield, Bot, BarChart3, History } from 'lucide-react';
-import { NavItem, Badge, LeaderboardEntry, WorkoutHistoryEntry, UserRole } from './types';
+import { LayoutDashboard, Dumbbell, Users, Settings, Trophy, Activity, MessageSquare, Clock3, Shield, Bot, BarChart3, History, CalendarCheck2, ShoppingBag, Clipboard, MessageCircle, Wrench, PlayCircle, Video, Lock, Map, Camera, Utensils, Medal, Wallet, ShieldAlert } from 'lucide-react';
+import { NavItem, Badge, LeaderboardEntry, WorkoutHistoryEntry, UserRole, BadgeDef } from './types';
+
+export const BADGES: BadgeDef[] = [
+  { id: 'b_streak_3', nameEn: 'Consistent Starter', nameAr: 'بداية ثابتة', descriptionEn: 'Log attendance for 3 consecutive days', descriptionAr: 'حضور لمدة 3 أيام متتالية', icon: '🔥', criteriaType: 'streak', criteriaValue: 3 },
+  { id: 'b_streak_7', nameEn: 'Iron Will', nameAr: 'إرادة حديدية', descriptionEn: 'Log attendance for 7 consecutive days', descriptionAr: 'حضور لمدة 7 أيام متتالية', icon: '⚡', criteriaType: 'streak', criteriaValue: 7 },
+  { id: 'b_streak_30', nameEn: 'Gym Legend', nameAr: 'أسطورة النادي', descriptionEn: 'Log attendance for 30 consecutive days', descriptionAr: 'حضور لمدة 30 يوم متتالية', icon: '👑', criteriaType: 'streak', criteriaValue: 30 },
+  { id: 'b_early_bird', nameEn: 'Early Bird', nameAr: 'الطائر المبكر', descriptionEn: 'Start a workout before 7:00 AM', descriptionAr: 'ابدأ تمرينك قبل الساعة 7:00 صباحاً', icon: '🌅', criteriaType: 'early_bird', criteriaValue: 1 },
+  { id: 'b_workouts_10', nameEn: 'Getting Serious', nameAr: 'بدأ الجد', descriptionEn: 'Complete 10 total workouts', descriptionAr: 'أكمل 10 تمارين', icon: '🏋️', criteriaType: 'workout_count', criteriaValue: 10 },
+  { id: 'b_workouts_50', nameEn: 'Beast Mode', nameAr: 'الوحش', descriptionEn: 'Complete 50 total workouts', descriptionAr: 'أكمل 50 تمرين', icon: '🦍', criteriaType: 'workout_count', criteriaValue: 50 },
+];
 
 export const TRANSLATIONS = {
   en: {
@@ -139,7 +147,72 @@ export const TRANSLATIONS = {
     maintenanceShort: "Maint.",
     totalEquipment: "Total Assets",
     brokenDevices: "Broken",
-    underMaintenance: "Repairing"
+    underMaintenance: "Repairing",
+    attendance: "Attendance",
+    plans: "Workout Plans",
+    store: "Rewards Store",
+    messages: "Messages",
+    todayAttendance: "Today's Check-Ins",
+    monthlyReport: "Monthly Report",
+    absentAlert: "Absent > 7 Days",
+    markPresent: "Mark Present",
+    assignPlan: "Assign Plan",
+    myPlan: "My Training Plan",
+    weightTracker: "Weight Progress",
+    logWeight: "Log Weight",
+    redeemReward: "Redeem",
+    myRedemptions: "My Redemptions",
+    insufficientPoints: "Insufficient Points",
+    inbox: "Inbox",
+    newMessage: "New Message",
+    sendMessage: "Send",
+    noMessages: "No messages yet",
+    revenue: "Revenue",
+    newMembers: "New Members",
+    topMembers: "Top Members",
+    paidStatus: "Paid",
+    pendingStatus: "Pending",
+    overdueStatus: "Overdue",
+    whatsapp: "WhatsApp Reminder",
+    // Batch 2 Translations
+    challenges: "Challenges",
+    joinChallenge: "Join Challenge",
+    myChallenges: "My Challenges",
+    challengeComplete: "Challenge Completed!",
+
+    kioskMode: "Entrance Kiosk",
+    kioskWelcome: "Welcome to Dolphin Gym",
+    scanToEnter: "Scan QR or Face to Enter",
+    accessDenied: "Access Denied",
+    faceId: "Face Recognition",
+    registerFace: "Register Face",
+    faceRegistered: "Face Registered Successfully",
+    theme: "Theme",
+    light: "Light",
+    dark: "Dark",
+    notificationsTitle: "Notifications",
+    markRead: "Mark as read",
+    clearAll: "Clear all",
+    personalQr: "My QR Code",
+    showQr: "Show Entry QR",
+    marketplace: "Marketplace",
+    trainerDashboard: "Freelance Dashboard",
+    matchmaker: "Partner Match",
+    progressVault: "Progress Vault",
+
+    // Batch 5 / Elite Features
+    aiFormAnalyzer: "AI Form Analyzer",
+    smartNutrition: "Smart Nutrition",
+    leaderboards: "Leaderboards",
+    trainerPayroll: "Trainer Payroll",
+    smartAccess: "Smart Access",
+    wearableSync: "Wearable Sync",
+    dolphinCoins: "Dolphin Coins",
+    churnPredictor: "Churn Predictor",
+    hubExplore: "Explore Hub",
+    aiTools: "AI & Smart Tools",
+    gamification: "Gamification & Community",
+    services: "Gym Services",
   },
   ar: {
     appName: "دولفين جيم",
@@ -276,21 +349,110 @@ export const TRANSLATIONS = {
     maintenanceShort: "صيانة",
     totalEquipment: "إجمالي الأجهزة",
     brokenDevices: "خارج الخدمة",
-    underMaintenance: "تحت الصيانة"
+    underMaintenance: "تحت الصيانة",
+    attendance: "الحضور",
+    plans: "خطط التمرين",
+    store: "متجر المكافآت",
+    messages: "الرسائل",
+    todayAttendance: "حضور اليوم",
+    monthlyReport: "التقرير الشهري",
+    absentAlert: "غائب أكثر من 7 أيام",
+    markPresent: "تسجيل الحضور",
+    assignPlan: "تعيين خطة",
+    myPlan: "خطتي التدريبية",
+    weightTracker: "تتبع الوزن",
+    logWeight: "تسجيل الوزن",
+    redeemReward: "استبدال",
+    myRedemptions: "استبداالاتي",
+    insufficientPoints: "نقاط غير كافية",
+    inbox: "البريد الوارد",
+    newMessage: "رسالة جديدة",
+    sendMessage: "إرسال",
+    noMessages: "لا توجد رسائل بعد",
+    revenue: "الإيرادات",
+    newMembers: "أعضاء جدد",
+    topMembers: "أكثر المواظبين",
+    paidStatus: "مدفوع",
+    pendingStatus: "معلق",
+    overdueStatus: "متأخر",
+    whatsapp: "تذكير واتساب",
+    // Batch 2 Translations
+    challenges: "التحديات",
+    joinChallenge: "انضم للتحدي",
+    myChallenges: "تحدياتي",
+    challengeComplete: "اكتمل التحدي!",
+
+    kioskMode: "شاشة المدخل (Kiosk)",
+    kioskWelcome: "مرحباً بك في دولفين جيم",
+    scanToEnter: "امسح الرمز أو الوجه للدخول",
+    accessDenied: "تم رفض الدخول",
+    faceId: "التعرف على الوجه",
+    registerFace: "تسجيل بصمة الوجه",
+    faceRegistered: "تم تسجيل الوجه بنجاح",
+    theme: "المظهر",
+    light: "فاتح",
+    dark: "داكن",
+    notificationsTitle: "الإشعارات",
+    markRead: "تحديد كمقروء",
+    clearAll: "مسح الكل",
+    personalQr: "رمز الدخول الخاص بي",
+    showQr: "عرض رمز QR",
+    marketplace: "سوق المدربين",
+    trainerDashboard: "لوحة المدرب المستقل",
+    matchmaker: "شريك التمرين",
+    progressVault: "خزنة الإنجازات",
+    floorPlan: "خريطة النادي",
+
+    // Batch 5 / Elite Features
+    aiFormAnalyzer: "محلل الأداء (AI)",
+    smartNutrition: "التغذية الذكية",
+    leaderboards: "لوحة الصدارة",
+    trainerPayroll: "رواتب المدربين",
+    smartAccess: "الدخول الذكي",
+    wearableSync: "مزامنة الساعات الذكية",
+    dolphinCoins: "عملات دولفين",
+    churnPredictor: "متنبئ الانسحاب",
+    hubExplore: "مركز الاستكشاف",
+    aiTools: "أدوات الذكاء الاصطناعي",
+    gamification: "المجتمع والتحديات",
+    services: "خدمات النادي",
   }
 };
 
 export const NAV_ITEMS: NavItem[] = [
   { id: 'dashboard', icon: <LayoutDashboard size={20} />, labelEn: 'Home', labelAr: 'الرئيسية' },
   { id: 'workouts', icon: <Dumbbell size={20} />, labelEn: 'Training', labelAr: 'التمارين' },
+  { id: 'hub', icon: <Camera size={20} />, labelEn: 'Explore', labelAr: 'المزيد' },
+  { id: 'marketplace', icon: <ShoppingBag size={20} />, labelEn: 'Marketplace', labelAr: 'سوق المدربين' },
   { id: 'coach', icon: <Bot size={20} />, labelEn: 'Coach', labelAr: 'المدرب' },
+  { id: 'attendance', icon: <CalendarCheck2 size={20} />, labelEn: 'Attendance', labelAr: 'الحضور' },
+  { id: 'plans', icon: <Clipboard size={20} />, labelEn: 'Plans', labelAr: 'الخطط' },
+  { id: 'store', icon: <ShoppingBag size={20} />, labelEn: 'Store', labelAr: 'المتجر' },
+  { id: 'challenges', icon: <Trophy size={20} />, labelEn: 'Challenges', labelAr: 'التحديات' },
+  { id: 'messages', icon: <MessageCircle size={20} />, labelEn: 'Messages', labelAr: 'الرسائل' },
+  { id: 'community', icon: <Users size={20} />, labelEn: 'Community', labelAr: 'المجتمع والمشاركة' },
+  { id: 'vod', icon: <PlayCircle size={20} />, labelEn: 'On Demand', labelAr: 'فيديوهات التمرين' },
+  { id: 'live', icon: <Video size={20} />, labelEn: 'Live Classes', labelAr: 'حصص مباشرة' },
+  { id: 'maintenance', icon: <Wrench size={20} />, labelEn: 'Maintenance', labelAr: 'الصيانة' },
   { id: 'admin', icon: <Settings size={20} />, labelEn: 'Manage', labelAr: 'الإدارة' },
+  { id: 'matchmaker', icon: <Users size={20} />, labelEn: 'Matchmaker', labelAr: 'شريك التمرين' },
+  { id: 'progress_vault', icon: <Lock size={20} />, labelEn: 'Progress Vault', labelAr: 'خزنة الإنجازات' },
+  { id: 'floor_plan', icon: <Map size={20} />, labelEn: 'Floor Plan', labelAr: 'خريطة النادي' },
+  { id: 'ai_form', icon: <Camera size={20} />, labelEn: 'AI Form', labelAr: 'تحليل الأداء (AI)' },
+  { id: 'nutrition', icon: <Utensils size={20} />, labelEn: 'Nutrition', labelAr: 'التغذية' },
+  { id: 'leaderboard_view', icon: <Medal size={20} />, labelEn: 'Leaderboard', labelAr: 'الصدارة' },
+  { id: 'payroll', icon: <Wallet size={20} />, labelEn: 'Payroll', labelAr: 'الرواتب' },
+  { id: 'squads', icon: <Users size={20} />, labelEn: 'Squads', labelAr: 'فِرق النادي' },
+  { id: 'churn_predictor', icon: <ShieldAlert size={20} />, labelEn: 'Churn Risk', labelAr: 'الأعضاء في خطر' },
   { id: 'settings', icon: <Shield size={20} />, labelEn: 'Settings', labelAr: 'الإعدادات' }
 ];
 
 export const getFilteredNavItems = (role: UserRole): NavItem[] => {
   if (role === 'member') {
-    return NAV_ITEMS.filter(item => item.id !== 'admin');
+    return NAV_ITEMS.filter(item => ['dashboard', 'workouts', 'nutrition', 'hub', 'settings'].includes(item.id));
+  }
+  if (role === 'trainer') {
+    return NAV_ITEMS.filter(item => !['store', 'churn_predictor'].includes(item.id));
   }
   return NAV_ITEMS;
 };
