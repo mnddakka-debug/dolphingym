@@ -407,10 +407,29 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const setNotificationsEnabled = (enabled: boolean) => {
+    // Safety check: Notification API may not exist on all mobile browsers
+    if (typeof Notification === 'undefined') {
+      setNotificationsEnabledState(enabled);
+      localStorage.setItem('gym_notify', enabled.toString());
+      return;
+    }
     if (enabled && Notification.permission !== 'granted') {
-      Notification.requestPermission().then(permission => {
-        if (permission === 'granted') { setNotificationsEnabledState(true); localStorage.setItem('gym_notify', 'true'); }
-      });
+      try {
+        Notification.requestPermission().then(permission => {
+          if (permission === 'granted') {
+            setNotificationsEnabledState(true);
+            localStorage.setItem('gym_notify', 'true');
+          }
+        }).catch(() => {
+          // Permission request failed (e.g. iOS Safari) — enable silently
+          setNotificationsEnabledState(true);
+          localStorage.setItem('gym_notify', 'true');
+        });
+      } catch {
+        // Fallback for browsers that don't support promise-based requestPermission
+        setNotificationsEnabledState(enabled);
+        localStorage.setItem('gym_notify', enabled.toString());
+      }
     } else {
       setNotificationsEnabledState(enabled);
       localStorage.setItem('gym_notify', enabled.toString());
