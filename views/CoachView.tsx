@@ -177,10 +177,14 @@ ALWAYS respond in ${isArabic ? 'Arabic' : 'English'}.`;
     updateSessionMessages(newMessagesList, newTitle);
     setLoading(true);
 
+    let aiText: string | null = null;
+
+    // 1️⃣ Try local AI backend first (works in dev mode on laptop)
     try {
       const response = await fetch('/api/ai/v1/chat/completions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        signal: AbortSignal.timeout(5000),
         body: JSON.stringify({
           model: agent.modelId,
           conversation_id: activeSessionId,
@@ -191,15 +195,55 @@ ALWAYS respond in ${isArabic ? 'Arabic' : 'English'}.`;
           ],
         }),
       });
-
-      if (!response.ok) {
-        throw new Error(`Server error: ${response.status} `);
+      if (response.ok) {
+        const data = await response.json();
+        aiText = data?.choices?.[0]?.message?.content || null;
       }
+    } catch {
+      // Local backend unavailable — fall through to Gemini
+    }
 
-      const data = await response.json();
-      const aiText = data?.choices?.[0]?.message?.content || (isArabic ? "لم أستطع الحصول على رد. حاول مرة أخرى!" : "I couldn't get a response. Please try again!");
+    // 2️⃣ Fallback: Gemini API (works on Netlify / mobile)
+    if (!aiText) {
+      try {
+        const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+        if (apiKey && apiKey !== 'PLACEHOLDER_API_KEY') {
+          const chatHistory = newMessagesList
+            .filter(m => m.role !== 'coach' || newMessagesList.indexOf(m) > 0)
+            .map(m => ({
+              role: m.role === 'user' ? 'user' : 'model',
+              parts: [{ text: m.text }]
+            }));
+          const geminiRes = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                contents: chatHistory,
+                systemInstruction: { parts: [{ text: systemPrompt }] }
+              })
+            }
+          );
+          if (geminiRes.ok) {
+            const gData = await geminiRes.json();
+            aiText = gData.candidates?.[0]?.content?.parts?.[0]?.text || null;
+          }
+        }
+      } catch (geminiError) {
+        console.error('Gemini fallback error:', geminiError);
+      }
+    }
 
+    if (aiText) {
       updateSessionMessages([...newMessagesList, { role: 'coach', text: aiText }]);
+      setLoading(false);
+      return;
+    }
+
+    // Both failed
+    try {
+      throw new Error('Both AI backends unavailable');
     } catch (error) {
       console.error(error);
       const errMsg = isArabic
