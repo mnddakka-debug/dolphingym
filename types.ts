@@ -86,9 +86,11 @@ export interface User {
   badges: string[];
   subscriptionStartDate?: string;
   subscriptionEndDate?: string;
+  subscriptionPrice?: number; // Custom monthly cost for variable revenue calculation
   paymentMethod?: PaymentMethod;
   paymentStatus?: 'paid' | 'pending' | 'overdue';
   referralCode?: string;
+  accessPin?: string; // 4-digit PIN for gym entry
 }
 
 export interface MatchRequest {
@@ -310,6 +312,7 @@ export interface Expense {
   amount: number;
   description: string;
   addedBy: string;
+  timestamp: string;
 }
 
 export interface Comment {

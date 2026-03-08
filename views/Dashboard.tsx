@@ -627,7 +627,20 @@ const Dashboard: React.FC = () => {
                 </div>
               </div>
 
-              <p className="mt-8 text-[9px] text-gray-600 font-black uppercase tracking-widest leading-relaxed max-w-[250px]">
+              {/* PIN Display */}
+              <div className="mt-6 w-full bg-white/5 border border-white/10 rounded-3xl px-8 py-5 flex flex-col items-center gap-1">
+                <p className="text-[9px] text-gray-500 font-black uppercase tracking-widest">Access PIN</p>
+                <div className="flex gap-3 mt-2">
+                  {(user?.accessPin || '0000').split('').map((digit, i) => (
+                    <div key={i} className="w-10 h-12 bg-black border border-blue-500/30 rounded-xl flex items-center justify-center text-2xl font-black text-blue-400 shadow-[0_0_10px_rgba(59,130,246,0.15)]">
+                      {digit}
+                    </div>
+                  ))}
+                </div>
+                <p className="text-[8px] text-gray-600 mt-2 font-bold uppercase tracking-widest">Show to staff as alternative</p>
+              </div>
+
+              <p className="mt-4 text-[9px] text-gray-600 font-black uppercase tracking-widest leading-relaxed max-w-[250px]">
                 Encrypted Session: {qrToken?.split('_')[2]}
               </p>
             </div>

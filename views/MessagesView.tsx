@@ -15,8 +15,8 @@ const MessagesView: React.FC = () => {
     // Contacts differ depending on role
     const contacts = useMemo(() => {
         if (isTrainer) return members;
-        // Members can message trainers/admins only
-        return [{ id: 'trainer-1', name: 'Coach Sarah', email: 'coach@dolphingym.com', role: 'trainer' as const, status: 'active' as const, points: 0, badges: [], memberSince: '' }];
+        // Members can message real trainers and admins
+        return members.filter(m => m.role === 'admin' || m.role === 'trainer');
     }, [isTrainer, members]);
 
     const selectedContact = contacts.find(c => c.id === selectedContactId);

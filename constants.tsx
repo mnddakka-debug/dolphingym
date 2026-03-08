@@ -449,7 +449,7 @@ export const NAV_ITEMS: NavItem[] = [
 
 export const getFilteredNavItems = (role: UserRole): NavItem[] => {
   if (role === 'member') {
-    return NAV_ITEMS.filter(item => ['dashboard', 'workouts', 'nutrition', 'hub', 'settings'].includes(item.id));
+    return NAV_ITEMS.filter(item => ['dashboard', 'workouts', 'messages', 'hub', 'settings'].includes(item.id));
   }
   if (role === 'trainer') {
     return NAV_ITEMS.filter(item => !['store', 'churn_predictor'].includes(item.id));

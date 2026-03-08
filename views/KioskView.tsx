@@ -2,16 +2,18 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useApp } from '../context/AppContext';
 import { TRANSLATIONS } from '../constants';
-import { ScanLine, CheckCircle2, XCircle, Camera, UserSquare, LogOut, SmartphoneNfc } from 'lucide-react';
+import { ScanLine, CheckCircle2, XCircle, Camera, UserSquare, LogOut, SmartphoneNfc, Hash, Delete } from 'lucide-react';
 import jsQR from 'jsqr';
 import * as faceapi from 'face-api.js';
 
 const KioskView: React.FC = () => {
     const { language, setKioskMode, members, logAttendance, addLead } = useApp();
     const t = TRANSLATIONS[language];
-    const [status, setStatus] = useState<'idle' | 'scanning' | 'processing' | 'success' | 'denied' | 'guest_form'>('idle');
+    const [status, setStatus] = useState<'idle' | 'scanning' | 'processing' | 'success' | 'denied' | 'guest_form' | 'pin_entry'>('idle');
     const [identifiedMember, setIdentifiedMember] = useState<any | null>(null);
-    const [mode, setMode] = useState<'qr' | 'face' | 'nfc'>('qr');
+    const [mode, setMode] = useState<'qr' | 'face' | 'nfc' | 'pin'>('qr');
+    const [pinInput, setPinInput] = useState('');
+    const [pinError, setPinError] = useState(false);
 
     const [guestName, setGuestName] = useState('');
     const [guestPhone, setGuestPhone] = useState('');
@@ -194,6 +196,13 @@ const KioskView: React.FC = () => {
                         </div>
                     </div>
 
+                    <div className="relative group cursor-pointer" onClick={() => { setMode('pin'); setStatus('pin_entry'); setPinInput(''); setPinError(false); }}>
+                        <div className="w-48 h-48 border-2 border-purple-500/30 rounded-[3rem] flex flex-col items-center justify-center gap-4 bg-black/50 backdrop-blur-sm group-hover:border-purple-500 group-hover:scale-105 transition-all">
+                            <Hash size={64} className="text-purple-400" />
+                            <span className="text-xl font-black uppercase tracking-widest">PIN</span>
+                        </div>
+                    </div>
+
                     <div className="relative group cursor-pointer" onClick={() => setStatus('guest_form')}>
                         <div className="w-48 h-48 border-2 border-green-500/30 rounded-[3rem] flex flex-col items-center justify-center gap-4 bg-black/50 backdrop-blur-sm group-hover:border-green-500 group-hover:scale-105 transition-all">
                             <UserSquare size={64} className="text-green-500" />
@@ -245,6 +254,90 @@ const KioskView: React.FC = () => {
                             <p className="text-lg font-bold">Subscription Valid until {new Date(identifiedMember.subscriptionEndDate || '').toLocaleDateString()}</p>
                         </div>
                     </div>
+                </div>
+            )}
+
+            {/* PIN Entry Mode */}
+            {status === 'pin_entry' && (
+                <div className="flex-1 flex flex-col items-center justify-center gap-8 animate-in fade-in duration-300 bg-black">
+                    <div className="text-center">
+                        <h2 className="text-4xl font-black text-purple-400 uppercase tracking-widest mb-2">PIN Entry</h2>
+                        <p className="text-lg text-gray-400 uppercase tracking-widest">Enter Member Access PIN</p>
+                    </div>
+
+                    {/* PIN Display */}
+                    <div className="flex gap-4">
+                        {[0, 1, 2, 3].map(i => (
+                            <div key={i} className={`w-16 h-20 rounded-2xl border-2 flex items-center justify-center text-4xl font-black transition-all
+                                ${pinError ? 'border-red-500 text-red-400 animate-pulse' : pinInput.length > i ? 'border-purple-500 text-white bg-purple-500/10' : 'border-white/20 text-gray-600'}`}>
+                                {pinInput.length > i ? '●' : ''}
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* Numpad */}
+                    <div className="grid grid-cols-3 gap-4 w-full max-w-xs">
+                        {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(n => (
+                            <button key={n} onClick={() => {
+                                if (pinInput.length < 4) {
+                                    const next = pinInput + n;
+                                    setPinInput(next);
+                                    setPinError(false);
+                                    if (next.length === 4) {
+                                        // Verify PIN
+                                        const found = members.find((m: any) => m.accessPin === next);
+                                        if (found) {
+                                            setIdentifiedMember(found);
+                                            logAttendance(found.id, found.name, 'manual');
+                                            setStatus('success');
+                                            setTimeout(() => { setStatus('idle'); setIdentifiedMember(null); setPinInput(''); }, 5000);
+                                        } else {
+                                            setPinError(true);
+                                            setTimeout(() => { setPinInput(''); setPinError(false); }, 1200);
+                                        }
+                                    }
+                                }
+                            }}
+                                className="h-20 rounded-2xl bg-white/5 border border-white/10 text-3xl font-black hover:bg-purple-500/20 hover:border-purple-500/50 active:scale-95 transition-all">
+                                {n}
+                            </button>
+                        ))}
+                        <button onClick={() => { setPinInput(''); setPinError(false); }}
+                            className="h-20 rounded-2xl bg-white/5 border border-white/10 text-lg font-black text-gray-400 hover:bg-red-500/20 hover:border-red-500/50 active:scale-95 transition-all">
+                            C
+                        </button>
+                        <button onClick={() => {
+                            if (pinInput.length < 4) {
+                                const next = pinInput + '0';
+                                setPinInput(next);
+                                setPinError(false);
+                                if (next.length === 4) {
+                                    const found = members.find((m: any) => m.accessPin === next);
+                                    if (found) {
+                                        setIdentifiedMember(found);
+                                        logAttendance(found.id, found.name, 'manual');
+                                        setStatus('success');
+                                        setTimeout(() => { setStatus('idle'); setIdentifiedMember(null); setPinInput(''); }, 5000);
+                                    } else {
+                                        setPinError(true);
+                                        setTimeout(() => { setPinInput(''); setPinError(false); }, 1200);
+                                    }
+                                }
+                            }
+                        }}
+                            className="h-20 rounded-2xl bg-white/5 border border-white/10 text-3xl font-black hover:bg-purple-500/20 hover:border-purple-500/50 active:scale-95 transition-all">
+                            0
+                        </button>
+                        <button onClick={() => setPinInput(p => p.slice(0, -1))}
+                            className="h-20 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 active:scale-95 transition-all">
+                            <Delete size={24} className="text-gray-400" />
+                        </button>
+                    </div>
+
+                    <button onClick={() => { setStatus('idle'); setPinInput(''); setPinError(false); }}
+                        className="bg-white/5 px-10 py-4 rounded-2xl font-black uppercase tracking-widest hover:bg-white/10 transition-all">
+                        Cancel
+                    </button>
                 </div>
             )}
 

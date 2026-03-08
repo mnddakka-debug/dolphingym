@@ -125,6 +125,7 @@ interface AppContextType {
   // Leads
   leads: Lead[];
   addLead: (lead: Partial<Lead>) => Promise<void>;
+  updateMemberPin: (memberId: string, pin: string) => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -213,6 +214,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     let unsubscribePlans: (() => void) | undefined;
     let unsubscribeLeads: (() => void) | undefined;
     let unsubscribeSocial: (() => void) | undefined;
+    let unsubscribeMessages: (() => void) | undefined;
+    let unsubscribeAttendance: (() => void) | undefined;
+    let unsubscribeExpenses: (() => void) | undefined;
 
     try {
       const savedLang = localStorage.getItem('gym_lang');
@@ -296,9 +300,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       unsubscribeLeads = onSnapshot(collection(db, 'leads'), (snapshot) => {
         setLeads(snapshot.docs.map(d => d.data() as Lead));
       });
-
-      const savedAttendance = localStorage.getItem('gym_attendance');
-      if (savedAttendance) setAttendance(JSON.parse(savedAttendance));
+      unsubscribeMessages = onSnapshot(collection(db, 'messages'), (snapshot) => {
+        setMessages(snapshot.docs.map(d => d.data() as Message));
+      });
+      unsubscribeAttendance = onSnapshot(collection(db, 'attendance'), (snapshot) => {
+        setAttendance(snapshot.docs.map(d => d.data() as AttendanceRecord));
+      });
+      unsubscribeExpenses = onSnapshot(collection(db, 'expenses'), (snapshot) => {
+        setExpenses(snapshot.docs.map(d => d.data() as Expense));
+      });
 
       const savedWeights = localStorage.getItem('gym_weights');
       if (savedWeights) setWeightEntries(JSON.parse(savedWeights));
@@ -309,12 +319,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const savedRedemptions = localStorage.getItem('gym_redemptions');
       if (savedRedemptions) setRedemptions(JSON.parse(savedRedemptions));
 
-      const savedMessages = localStorage.getItem('gym_messages');
-      if (savedMessages) setMessages(JSON.parse(savedMessages));
-
-      const savedNotifs = localStorage.getItem('gym_app_notifs');
-      if (savedNotifs) setAppNotifications(JSON.parse(savedNotifs));
-
       const savedChallenges = localStorage.getItem('gym_challenges');
       if (savedChallenges) setChallenges(JSON.parse(savedChallenges));
 
@@ -323,9 +327,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       const savedTheme = localStorage.getItem('gym_theme');
       if (savedTheme) setThemeState(savedTheme as Theme);
-
-      const savedExpenses = localStorage.getItem('gym_expenses');
-      if (savedExpenses) setExpenses(JSON.parse(savedExpenses));
 
       const savedMaintenance = localStorage.getItem('gym_maintenance_reports');
       if (savedMaintenance) setMaintenanceReports(JSON.parse(savedMaintenance));
@@ -357,6 +358,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (unsubscribePlans) unsubscribePlans();
       if (unsubscribeLeads) unsubscribeLeads();
       if (unsubscribeSocial) unsubscribeSocial();
+      if (typeof unsubscribeMessages !== 'undefined') unsubscribeMessages();
+      if (typeof unsubscribeAttendance !== 'undefined') unsubscribeAttendance();
+      if (typeof unsubscribeExpenses !== 'undefined') unsubscribeExpenses();
     };
   }, []);
 
@@ -384,18 +388,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           sendBrowserNotification(t.notifyTitle, t.memberExpiryMsg.replace('{{days}}', daysLeft.toString()));
         }
       }
-      let ws: WebSocket | null = null;
-      try {
-        ws = new window.WebSocket('ws://localhost:4000');
-        ws.onmessage = (event) => {
-          try {
-            const data = JSON.parse(event.data);
-            if (data.type === 'notification') sendBrowserNotification(data.title || t.notifyTitle, data.message || 'لديك إشعار جديد');
-          } catch (e) { /* ignore */ }
-        };
-        ws.onerror = () => { ws?.close(); };
-      } catch (e) { /* ignore */ }
-      return () => { ws?.close(); };
+      // NOTE: WebSocket (ws://localhost:4000) is intentionally NOT connected here
+      // because localhost is not reachable from mobile devices.
     }
   }, [notificationsEnabled, members, expiryDays, user, language]);
 
@@ -409,32 +403,57 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const setNotificationsEnabled = (enabled: boolean) => {
-    // Safety check: Notification API may not exist on all mobile browsers
-    if (typeof Notification === 'undefined') {
-      setNotificationsEnabledState(enabled);
-      localStorage.setItem('gym_notify', enabled.toString());
+    // If disabling, just save and return immediately
+    if (!enabled) {
+      setNotificationsEnabledState(false);
+      localStorage.setItem('gym_notify', 'false');
       return;
     }
-    if (enabled && Notification.permission !== 'granted') {
-      try {
-        Notification.requestPermission().then(permission => {
-          if (permission === 'granted') {
-            setNotificationsEnabledState(true);
-            localStorage.setItem('gym_notify', 'true');
-          }
+
+    // Safety check: Notification API may not exist on all mobile browsers (e.g. some Android WebView)
+    if (typeof Notification === 'undefined') {
+      // Enable in-app only — no browser push possible
+      setNotificationsEnabledState(true);
+      localStorage.setItem('gym_notify', 'true');
+      return;
+    }
+
+    // Already granted — just enable
+    if (Notification.permission === 'granted') {
+      setNotificationsEnabledState(true);
+      localStorage.setItem('gym_notify', 'true');
+      return;
+    }
+
+    // Already denied — enable in-app silently (can't re-prompt)
+    if (Notification.permission === 'denied') {
+      setNotificationsEnabledState(true);
+      localStorage.setItem('gym_notify', 'true');
+      return;
+    }
+
+    // Request permission (prompt state)
+    try {
+      const result = Notification.requestPermission();
+      // Modern browsers return a Promise
+      if (result && typeof result.then === 'function') {
+        result.then(permission => {
+          setNotificationsEnabledState(true);
+          localStorage.setItem('gym_notify', 'true');
         }).catch(() => {
-          // Permission request failed (e.g. iOS Safari) — enable silently
+          // Permission dialog failed — enable in-app only
           setNotificationsEnabledState(true);
           localStorage.setItem('gym_notify', 'true');
         });
-      } catch {
-        // Fallback for browsers that don't support promise-based requestPermission
-        setNotificationsEnabledState(enabled);
-        localStorage.setItem('gym_notify', enabled.toString());
+      } else {
+        // Older callback-based API or no result
+        setNotificationsEnabledState(true);
+        localStorage.setItem('gym_notify', 'true');
       }
-    } else {
-      setNotificationsEnabledState(enabled);
-      localStorage.setItem('gym_notify', enabled.toString());
+    } catch {
+      // Any unexpected error — enable in-app silently
+      setNotificationsEnabledState(true);
+      localStorage.setItem('gym_notify', 'true');
     }
   };
 
@@ -448,6 +467,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       role: newMemberData.role || 'member', status: 'active', points: newMemberData.points || 0, badges: [], memberSince: new Date().toISOString(),
       subscriptionStartDate: newMemberData.subscriptionStartDate || new Date().toISOString(),
       subscriptionEndDate: newMemberData.subscriptionEndDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+      subscriptionPrice: newMemberData.subscriptionPrice, // Added subscriptionPrice
       paymentMethod: newMemberData.paymentMethod || 'cash', paymentStatus: 'pending', phone: newMemberData.phone,
       referralCode: Math.random().toString(36).substr(2, 6).toUpperCase()
     };
@@ -576,11 +596,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // ── Attendance ──────────────────────────────
-  const logAttendance = (memberId: string, memberName: string, method: 'qr' | 'manual' | 'face' | 'nfc' = 'manual') => {
-    const record: AttendanceRecord = { id: Math.random().toString(36).substr(2, 9), memberId, memberName, timestamp: new Date().toISOString(), method };
-    const updated = [...attendance, record];
-    setAttendance(updated);
-    localStorage.setItem('gym_attendance', JSON.stringify(updated));
+  const logAttendance = async (memberId: string, memberName: string, method: 'qr' | 'manual' | 'face' | 'nfc' = 'manual') => {
+    const recordId = Math.random().toString(36).substr(2, 9);
+    const record: AttendanceRecord = { id: recordId, memberId, memberName, timestamp: new Date().toISOString(), method };
+    await setDoc(doc(db, 'attendance', recordId), record);
 
     // Award Points for Attendance (limit to once per day logic could be added, simple +50 for now)
     const mUser = members.find(m => m.id === memberId);
@@ -653,18 +672,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // ── Messages ─────────────────────────────────
-  const sendMessage = (toId: string, toName: string, text: string) => {
+  const sendMessage = async (toId: string, toName: string, text: string) => {
     if (!user) return;
-    const msg: Message = { id: Math.random().toString(36).substr(2, 9), fromId: user.id, fromName: user.name, toId, toName, text, timestamp: new Date().toISOString(), read: false };
-    const updated = [...messages, msg];
-    setMessages(updated);
-    localStorage.setItem('gym_messages', JSON.stringify(updated));
+    const msgId = Math.random().toString(36).substr(2, 9);
+    const msg: Message = { id: msgId, fromId: user.id, fromName: user.name, toId, toName, text, timestamp: new Date().toISOString(), read: false };
+    await setDoc(doc(db, 'messages', msgId), msg);
   };
 
-  const markMessageRead = (id: string) => {
-    const updated = messages.map(m => m.id === id ? { ...m, read: true } : m);
-    setMessages(updated);
-    localStorage.setItem('gym_messages', JSON.stringify(updated));
+  const markMessageRead = async (id: string) => {
+    await updateDoc(doc(db, 'messages', id), { read: true });
   };
 
   const getUnreadCount = (): number => {
@@ -814,26 +830,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   );
 
   // ── Financial Ledger ─────────────────────────
-  const addExpense = (expenseData: Partial<Expense>) => {
+  const addExpense = async (expenseData: Partial<Expense>) => {
     if (user?.role !== 'admin') return;
+    const expenseId = Math.random().toString(36).substr(2, 9);
     const expense: Expense = {
-      id: Math.random().toString(36).substr(2, 9),
+      id: expenseId,
       date: expenseData.date || new Date().toISOString().split('T')[0],
       category: expenseData.category || 'other',
       amount: expenseData.amount || 0,
       description: expenseData.description || '',
-      addedBy: user.name
+      addedBy: user?.name || 'Admin',
+      timestamp: new Date().toISOString()
     };
-    const updated = [...expenses, expense];
-    setExpenses(updated);
-    localStorage.setItem('gym_expenses', JSON.stringify(updated));
+    await setDoc(doc(db, 'expenses', expenseId), expense);
   };
 
-  const deleteExpense = (id: string) => {
+  const deleteExpense = async (id: string) => {
     if (user?.role !== 'admin') return;
-    const updated = expenses.filter(e => e.id !== id);
-    setExpenses(updated);
-    localStorage.setItem('gym_expenses', JSON.stringify(updated));
+    await deleteDoc(doc(db, 'expenses', id));
   };
 
   // ── Trainer Payroll ─────────────────────────
@@ -1036,6 +1050,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       status: 'visited'
     };
     await setDoc(doc(db, 'leads', id), newLead);
+  };
+
+  const updateMemberPin = async (memberId: string, pin: string) => {
+    await updateDoc(doc(db, 'users', memberId), { accessPin: pin });
   };
 
   // ── Gym Social Feed ──────────────────────────
@@ -1269,7 +1287,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       progressPhotos, addProgressPhoto, deleteProgressPhoto,
       trainerShifts, addTrainerShift, payrollRecords, generatePayroll,
       squads, createSquad, joinSquad, leaveSquad, getAtRiskMembers,
-      leads, addLead
+      leads, addLead, updateMemberPin
     }}>
       {children}
     </AppContext.Provider>

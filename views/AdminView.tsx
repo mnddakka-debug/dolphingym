@@ -2,41 +2,46 @@
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { TRANSLATIONS } from '../constants';
-import { Users, Package, Globe, LogOut, X, Calendar, UserPlus, Bell, Search, Edit2, Trash2, RefreshCw, CheckCircle, AlertCircle, Clock, Send, Banknote, CreditCard, ShieldAlert, Key, Mail, Plus, Hammer, Trash, Info, TrendingUp, DollarSign, HelpCircle } from 'lucide-react';
+import { Users, Package, Globe, LogOut, X, Calendar, UserPlus, Bell, Search, Edit2, Trash2, RefreshCw, CheckCircle, AlertCircle, Clock, Send, Banknote, CreditCard, ShieldAlert, Key, Mail, Plus, Hammer, Trash, Info, TrendingUp, DollarSign, HelpCircle, Hash } from 'lucide-react';
 import { User, PaymentMethod, Equipment, EquipmentStatus, EquipmentCategory } from '../types';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
 const AdminView: React.FC = () => {
   const {
-    language, logout, members, equipment,
+    language, logout, members = [], equipment = [],
     addMember, updateMember, deleteMember,
     addEquipment, updateEquipment, deleteEquipment,
-    expiryDays, attendance, rewards, addReward, deleteReward,
-    expenses, addExpense, deleteExpense, transactions,
-    helpRequests, resolveHelpRequest,
-    leads
+    expiryDays, attendance = [], rewards = [], addReward, deleteReward,
+    expenses = [], addExpense, deleteExpense, transactions = [],
+    helpRequests = [], resolveHelpRequest,
+    leads = [], updateMemberPin
   } = useApp();
 
-  const activeSOS = helpRequests.filter(r => r.status === 'active');
+  const activeSOS = (helpRequests || []).filter(r => r?.status === 'active');
 
   const t = TRANSLATIONS[language];
-  const [activeSubView, setActiveSubView] = useState<'players' | 'equipment' | 'financials' | 'analytics' | 'leads'>('players');
+  const [activeSubView, setActiveSubView] = useState<'players' | 'equipment' | 'financials' | 'analytics' | 'leads' | 'pins'>('players');
   const [showModal, setShowModal] = useState(false);
   const [editingItem, setEditingItem] = useState<any | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filter, setFilter] = useState<string>('all');
+  const [editingPin, setEditingPin] = useState<{ [memberId: string]: string }>({});
 
   // Players Form Data
   const [playerForm, setPlayerForm] = useState<{
-    name: string; email: string; password?: string; role: 'member' | 'trainer';
-    startDate: string; endDate: string; paymentMethod: PaymentMethod;
+    name: string;
+    email: string;
+    password?: string;
+    role: 'member' | 'trainer';
+    startDate: string;
+    endDate: string;
+    subscriptionPrice?: number;
+    paymentMethod: PaymentMethod;
   }>({
-    name: '',
-    email: '',
-    password: '',
-    role: 'member',
+    name: '', email: '', role: 'member',
     startDate: new Date().toISOString().split('T')[0],
     endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    subscriptionPrice: 50,
     paymentMethod: 'cash'
   });
 
@@ -98,7 +103,8 @@ const AdminView: React.FC = () => {
 
   const filteredEquipment = useMemo(() => {
     return equipment.filter(item => {
-      const matchesSearch = (item.nameEn + item.nameAr).toLowerCase().includes(searchTerm.toLowerCase());
+      const nameStr = `${item.nameEn || ''} ${item.nameAr || ''}`;
+      const matchesSearch = nameStr.toLowerCase().includes(searchTerm.toLowerCase());
       if (filter !== 'all' && item.status !== filter) return false;
       return matchesSearch;
     });
@@ -106,9 +112,9 @@ const AdminView: React.FC = () => {
 
   const stats = useMemo(() => {
     return {
-      totalAssets: equipment.reduce((acc, curr) => acc + curr.quantity, 0),
-      broken: equipment.filter(e => e.status === 'broken').length,
-      repairing: equipment.filter(e => e.status === 'maintenance').length
+      totalAssets: (equipment || []).reduce((acc, curr) => acc + (curr?.quantity || 0), 0),
+      broken: (equipment || []).filter(e => e?.status === 'broken').length,
+      repairing: (equipment || []).filter(e => e?.status === 'maintenance').length
     };
   }, [equipment]);
 
@@ -120,29 +126,45 @@ const AdminView: React.FC = () => {
     const lastMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
 
     const newMembersThisMonth = members.filter(m => {
+      if (!m.memberSince) return false;
       const joined = new Date(m.memberSince);
       return joined.getMonth() === thisMonth && joined.getFullYear() === thisYear;
     }).length;
 
     const todayStr = now.toDateString();
-    const todayAttendance = attendance.filter(r => new Date(r.timestamp).toDateString() === todayStr).length;
+    const todayAttendance = attendance.filter(r => r.timestamp && new Date(r.timestamp).toDateString() === todayStr).length;
 
-    const monthAttendance = attendance.filter(r => {
+    const monthAttendance = (attendance || []).filter(r => {
+      if (!r?.timestamp) return false;
       const d = new Date(r.timestamp);
       return d.getMonth() === thisMonth && d.getFullYear() === thisYear;
     });
 
-    const topMembers = members.map(m => ({
+    const topMembers = (members || []).map(m => ({
       ...m,
-      sessions: monthAttendance.filter(r => r.memberId === m.id).length,
+      sessions: monthAttendance.filter(r => r?.memberId === m?.id).length,
     })).sort((a, b) => b.sessions - a.sessions).slice(0, 5);
 
     // Financial calculations
-    const thisMonthTransactions = transactions.filter(t => new Date(t.timestamp).getMonth() === thisMonth && new Date(t.timestamp).getFullYear() === thisYear);
-    const thisMonthExpenses = expenses.filter(e => new Date(e.date).getMonth() === thisMonth && new Date(e.date).getFullYear() === thisYear);
+    const thisMonthTransactions = (transactions || []).filter(t => {
+      if (!t?.timestamp) return false;
+      const d = new Date(t.timestamp);
+      return d.getMonth() === thisMonth && d.getFullYear() === thisYear;
+    });
+
+    const thisMonthExpenses = (expenses || []).filter(e => {
+      if (!e?.date) return false;
+      const d = new Date(e.date);
+      return d.getMonth() === thisMonth && d.getFullYear() === thisYear;
+    });
 
     // Hardcode subscription cost at 50 for this calculation
-    const thisMonthSubs = members.filter(m => new Date(m.subscriptionStartDate || m.memberSince).getMonth() === thisMonth && new Date(m.subscriptionStartDate || m.memberSince).getFullYear() === thisYear).length * 50;
+    const thisMonthSubs = (members || []).filter(m => {
+      const dateStr = m.subscriptionStartDate || m.memberSince;
+      if (!dateStr) return false;
+      const d = new Date(dateStr);
+      return d.getMonth() === thisMonth && d.getFullYear() === thisYear;
+    }).reduce((acc, m) => acc + (m.subscriptionPrice || 50), 0);
 
     // Total income from freelancer commissions
     const thisMonthCommission = thisMonthTransactions.reduce((acc, t) => acc + (t.gymCommission || 0), 0);
@@ -161,7 +183,8 @@ const AdminView: React.FC = () => {
         name: '', email: '', role: 'member',
         startDate: new Date().toISOString().split('T')[0],
         endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        paymentMethod: 'cash'
+        paymentMethod: 'cash',
+        subscriptionPrice: 50 // Default
       });
     } else if (activeSubView === 'equipment') {
       setEqForm({
@@ -185,7 +208,8 @@ const AdminView: React.FC = () => {
         name: item.name, email: item.email, password: '', role: item.role as 'member' | 'trainer',
         startDate: item.subscriptionStartDate?.split('T')[0] || '',
         endDate: item.subscriptionEndDate?.split('T')[0] || '',
-        paymentMethod: item.paymentMethod || 'cash'
+        paymentMethod: item.paymentMethod || 'cash',
+        subscriptionPrice: item.subscriptionPrice || 50
       });
     } else {
       setEqForm({
@@ -216,8 +240,8 @@ const AdminView: React.FC = () => {
 
   const exportFinancialsCSV = () => {
     const headers = ['Date', 'Category', 'Description', 'Amount', 'Added By'];
-    const rows = analyticsData.thisMonthExpenses.map(e => [
-      e.date, e.category, `"${e.description.replace(/"/g, '""')}"`, e.amount, e.addedBy
+    const rows = (analyticsData.thisMonthExpenses || []).map(e => [
+      e?.date || '', e?.category || '', `"${(e?.description || '').replace(/"/g, '""')}"`, e?.amount || 0, e?.addedBy || ''
     ]);
 
     const csvContent = "data:text/csv;charset=utf-8,"
@@ -276,50 +300,44 @@ const AdminView: React.FC = () => {
         </div>
       )}
 
-      {/* Sub-View Switcher */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <button
-          onClick={() => { setActiveSubView('players'); setFilter('all'); }}
-          className={`col-span-1 flex flex-col items-center justify-center p-5 rounded-3xl border transition-all group ${activeSubView === 'players' ? 'blue-bg border-blue-400 shadow-xl' : 'bg-[#111] border-white/5 hover:border-white/20'}`}
-        >
-          <Users className={`mb-3 group-hover:scale-110 transition-transform ${activeSubView === 'players' ? 'text-white' : 'text-blue-400'}`} size={28} />
-          <span className={`font-black text-xs uppercase tracking-widest ${activeSubView === 'players' ? 'text-white' : 'text-gray-400'}`}>{t.manageUsers}</span>
-        </button>
-        <button
-          onClick={() => { setActiveSubView('equipment'); setFilter('all'); }}
-          className={`col-span-1 flex flex-col items-center justify-center p-5 rounded-3xl border transition-all group ${activeSubView === 'equipment' ? 'blue-bg border-blue-400 shadow-xl' : 'bg-[#111] border-white/5 hover:border-white/20'}`}
-        >
-          <Package className={`mb-3 group-hover:scale-110 transition-transform ${activeSubView === 'equipment' ? 'text-white' : 'text-blue-400'}`} size={28} />
-          <span className={`font-black text-xs uppercase tracking-widest ${activeSubView === 'equipment' ? 'text-white' : 'text-gray-400'}`}>{t.manageEquipment}</span>
-        </button>
-        <button
-          onClick={() => { setActiveSubView('analytics'); setFilter('all'); }}
-          className={`col-span-1 flex flex-col items-center justify-center p-5 rounded-3xl border transition-all group ${activeSubView === 'analytics' ? 'blue-bg border-blue-400 shadow-xl' : 'bg-[#111] border-white/5 hover:border-white/20'}`}
-        >
-          <TrendingUp className={`mb-3 group-hover:scale-110 transition-transform ${activeSubView === 'analytics' ? 'text-white' : 'text-blue-400'}`} size={28} />
-          <span className={`font-black text-[10px] uppercase tracking-widest ${activeSubView === 'analytics' ? 'text-white' : 'text-gray-400'}`}>Analytics</span>
-        </button>
-        <button
-          onClick={() => { setActiveSubView('analytics'); setFilter('all'); }}
-          className={`col-span-1 flex flex-col items-center justify-center p-5 rounded-3xl border transition-all group ${activeSubView === 'analytics' ? 'blue-bg border-blue-400 shadow-xl' : 'bg-[#111] border-white/5 hover:border-white/20'}`}
-        >
-          <TrendingUp className={`mb-3 group-hover:scale-110 transition-transform ${activeSubView === 'analytics' ? 'text-white' : 'text-blue-400'}`} size={28} />
-          <span className={`font-black text-[10px] uppercase tracking-widest ${activeSubView === 'analytics' ? 'text-white' : 'text-gray-400'}`}>Analytics</span>
-        </button>
-        <button
-          onClick={() => { setActiveSubView('financials'); setFilter('all'); }}
-          className={`col-span-1 flex flex-col items-center justify-center p-5 rounded-3xl border transition-all group ${activeSubView === 'financials' ? 'blue-bg border-blue-400 shadow-xl' : 'bg-[#111] border-white/5 hover:border-white/20'}`}
-        >
-          <DollarSign className={`mb-3 group-hover:scale-110 transition-transform ${activeSubView === 'financials' ? 'text-white' : 'text-blue-400'}`} size={28} />
-          <span className={`font-black text-[10px] uppercase tracking-widest ${activeSubView === 'financials' ? 'text-white' : 'text-gray-400'}`}>Financials</span>
-        </button>
-        <button
-          onClick={() => { setActiveSubView('leads'); setFilter('all'); }}
-          className={`col-span-1 flex flex-col items-center justify-center p-5 rounded-3xl border transition-all group ${activeSubView === 'leads' ? 'bg-green-600 border-green-400 shadow-xl shadow-green-500/20' : 'bg-[#111] border-white/5 hover:border-white/20'}`}
-        >
-          <UserPlus className={`mb-3 group-hover:scale-110 transition-transform ${activeSubView === 'leads' ? 'text-white' : 'text-green-500'}`} size={28} />
-          <span className={`font-black text-[10px] uppercase tracking-widest ${activeSubView === 'leads' ? 'text-white' : 'text-gray-400'}`}>Leads</span>
-        </button>
+      {/* Sub-View Switcher — compact scrollable tab bar */}
+      <div
+        style={{
+          display: 'flex',
+          overflowX: 'auto',
+          overflowY: 'hidden',
+          WebkitOverflowScrolling: 'touch',
+          scrollbarWidth: 'none',
+          gap: '8px',
+          paddingBottom: '4px',
+        } as React.CSSProperties}
+      >
+        {([
+          { id: 'players', icon: <Users size={15} />, label: t.manageUsers, color: 'blue' },
+          { id: 'equipment', icon: <Package size={15} />, label: t.manageEquipment, color: 'blue' },
+          { id: 'analytics', icon: <TrendingUp size={15} />, label: 'Analytics', color: 'blue' },
+          { id: 'financials', icon: <DollarSign size={15} />, label: 'Financials', color: 'blue' },
+          { id: 'leads', icon: <UserPlus size={15} />, label: 'Leads', color: 'green' },
+          { id: 'pins', icon: <Hash size={15} />, label: 'PINs', color: 'purple' },
+        ] as const).map(tab => {
+          const isActive = activeSubView === tab.id;
+          const activeClass =
+            tab.color === 'green' ? 'bg-green-600 border-green-500 text-white shadow-lg shadow-green-500/20' :
+              tab.color === 'purple' ? 'bg-purple-600 border-purple-500 text-white shadow-lg shadow-purple-500/20' :
+                'bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-500/20';
+          return (
+            <button
+              key={tab.id}
+              onClick={() => { setActiveSubView(tab.id as any); setFilter('all'); }}
+              style={{ flexShrink: 0, whiteSpace: 'nowrap' }}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl border text-[11px] font-black uppercase tracking-widest transition-all active:scale-95
+                ${isActive ? activeClass : 'bg-[#111] border-white/10 text-gray-400 hover:border-white/20 hover:text-white'}`}
+            >
+              {tab.icon}
+              {tab.label}
+            </button>
+          );
+        })}
       </div>
 
       {/* Dynamic Management Section */}
@@ -331,6 +349,7 @@ const AdminView: React.FC = () => {
             {activeSubView === 'financials' && <><TrendingUp size={20} className="text-blue-400" /> Financial Analytics</>}
             {activeSubView === 'analytics' && <><TrendingUp size={20} className="text-blue-400" /> Attendance Analytics</>}
             {activeSubView === 'leads' && <><UserPlus size={20} className="text-green-400" /> Leads & Guests</>}
+            {activeSubView === 'pins' && <><Key size={20} className="text-purple-400" /> Member PIN Codes</>}
           </h3>
           {(activeSubView === 'players' || activeSubView === 'equipment' || activeSubView === 'financials') && (
             <button onClick={handleOpenAdd} className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl blue-bg flex items-center justify-center text-white blue-glow shadow-lg active:scale-90 transition-all">
@@ -370,11 +389,11 @@ const AdminView: React.FC = () => {
           <div className="flex gap-2 overflow-x-auto pb-2 sm:pb-0 no-scrollbar sm:flex-wrap items-center">
             {activeSubView === 'players' ? (
               ['all', 'active', 'expiring', 'expired'].map(f => (
-                <button key={f} onClick={() => setFilter(f)} className={`px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-widest border transition-all whitespace-nowrap active:scale-95 ${filter === f ? 'bg-blue-500 border-blue-400 text-white shadow-lg shadow-blue-500/20' : 'bg-white/5 border-white/10 text-gray-500 hover:text-white hover:bg-white/10'}`}>{t[f as keyof typeof t] || f}</button>
+                <button key={f} onClick={() => setFilter(f)} className={`px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-widest border transition-all whitespace-nowrap active:scale-95 ${filter === f ? 'bg-blue-500 border-blue-400 text-white shadow-lg shadow-blue-500/20' : 'bg-white/5 border-white/10 text-gray-500 hover:text-white hover:bg-white/10'}`}>{t?.[f as keyof typeof t] || f}</button>
               ))
             ) : activeSubView === 'equipment' ? (
               ['all', 'available', 'maintenance', 'broken'].map(f => (
-                <button key={f} onClick={() => setFilter(f)} className={`px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-widest border transition-all whitespace-nowrap active:scale-95 ${filter === f ? 'bg-blue-500 border-blue-400 text-white shadow-lg shadow-blue-500/20' : 'bg-white/5 border-white/10 text-gray-500 hover:text-white hover:bg-white/10'}`}>{t[f as keyof typeof t] || f}</button>
+                <button key={f} onClick={() => setFilter(f)} className={`px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-widest border transition-all whitespace-nowrap active:scale-95 ${filter === f ? 'bg-blue-500 border-blue-400 text-white shadow-lg shadow-blue-500/20' : 'bg-white/5 border-white/10 text-gray-500 hover:text-white hover:bg-white/10'}`}>{t?.[f as keyof typeof t] || f}</button>
               ))
             ) : activeSubView === 'leads' ? (
               ['all', 'visited', 'contacted', 'converted'].map(f => (
@@ -607,8 +626,8 @@ const AdminView: React.FC = () => {
 
           {activeSubView === 'leads' && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-              {leads.filter(l => filter === 'all' || l.status === filter)
-                .filter(l => l.name.toLowerCase().includes(searchTerm.toLowerCase()) || l.phone.includes(searchTerm))
+              {(leads || []).filter(l => filter === 'all' || l?.status === filter)
+                .filter(l => (l?.name || '').toLowerCase().includes(searchTerm.toLowerCase()) || (l?.phone || '').includes(searchTerm))
                 .map(lead => (
                   <div key={lead.id} className="bg-[#111] p-6 rounded-[2rem] border border-white/5 relative overflow-hidden group hover:border-green-500/30 transition-all flex flex-col justify-between">
                     <div className="absolute top-0 right-0 w-32 h-32 bg-green-500/10 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none" />
@@ -652,7 +671,7 @@ const AdminView: React.FC = () => {
                   </div>
                 ))}
 
-              {leads.filter(l => filter === 'all' || l.status === filter).length === 0 && (
+              {(leads || []).filter(l => filter === 'all' || l?.status === filter).length === 0 && (
                 <div className="col-span-full py-16 text-center flex flex-col items-center gap-5 opacity-40 bg-white/5 rounded-[2rem] border border-white/5 border-dashed">
                   <UserPlus size={48} className="text-gray-500" />
                   <p className="text-sm font-bold uppercase tracking-[0.2em] text-gray-500">No leads found</p>
@@ -661,7 +680,57 @@ const AdminView: React.FC = () => {
             </div>
           )}
 
-          {activeSubView !== 'financials' && activeSubView !== 'analytics' && activeSubView !== 'leads' && (activeSubView === 'players' ? filteredMembers : filteredEquipment).length === 0 && (
+          {activeSubView === 'pins' && (
+            <div className="col-span-1 lg:col-span-2 space-y-4">
+              <p className="text-xs text-gray-500 font-bold uppercase tracking-widest mb-4">Set a 4-digit PIN for each member so they can check in at the kiosk without scanning a QR.</p>
+              {(members || []).filter(m => m?.role === 'member').map(member => (
+                <div key={member.id} className="flex items-center justify-between p-5 bg-[#111] rounded-[2rem] border border-white/5 hover:border-purple-500/20 transition-all gap-4">
+                  <div className="flex items-center gap-4 min-w-0">
+                    <div className="w-10 h-10 rounded-full bg-purple-500/10 flex items-center justify-center text-purple-400 font-black text-lg uppercase border border-purple-500/20 shrink-0">{(member.name || '?')[0]}</div>
+                    <div className="truncate">
+                      <p className="font-black text-sm uppercase tracking-tight truncate">{member.name}</p>
+                      <p className="text-[10px] text-gray-500 font-bold truncate">{member.email}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 shrink-0">
+                    <div className="flex gap-1">
+                      {[0, 1, 2, 3].map(i => (
+                        <div key={i} className={`w-8 h-9 rounded-lg border flex items-center justify-center text-lg font-black transition-all
+                          ${member.accessPin && member.accessPin[i] ? 'border-purple-500/50 text-purple-300 bg-purple-500/10' : 'border-white/10 text-gray-700'}`}>
+                          {member.accessPin?.[i] || '–'}
+                        </div>
+                      ))}
+                    </div>
+                    <input
+                      type="text" maxLength={4} inputMode="numeric" pattern="[0-9]*"
+                      value={editingPin[member.id] ?? member.accessPin ?? ''}
+                      onChange={e => {
+                        const val = e.target.value.replace(/\D/g, '').slice(0, 4);
+                        setEditingPin(prev => ({ ...prev, [member.id]: val }));
+                      }}
+                      placeholder="____"
+                      className="w-20 bg-black border border-purple-500/30 rounded-xl py-2 px-3 text-center text-lg font-black tracking-widest focus:border-purple-500 focus:outline-none text-purple-300 placeholder:text-gray-700"
+                    />
+                    <button
+                      onClick={async () => {
+                        const pin = editingPin[member.id];
+                        if (pin && pin.length === 4) {
+                          await updateMemberPin(member.id, pin);
+                          setEditingPin(prev => { const n = { ...prev }; delete n[member.id]; return n; });
+                        }
+                      }}
+                      disabled={!editingPin[member.id] || editingPin[member.id].length !== 4}
+                      className="p-3 bg-purple-600 hover:bg-purple-500 disabled:opacity-30 disabled:cursor-not-allowed text-white rounded-xl transition-all active:scale-95"
+                    >
+                      <CheckCircle size={18} />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {activeSubView !== 'financials' && activeSubView !== 'analytics' && activeSubView !== 'leads' && activeSubView !== 'pins' && (activeSubView === 'players' ? filteredMembers : filteredEquipment).length === 0 && (
             <div className="col-span-1 lg:col-span-2 py-16 text-center flex flex-col items-center gap-5 opacity-40 bg-white/5 rounded-[2rem] border border-white/5 border-dashed">
               <Info size={48} className="text-gray-500" />
               <p className="text-sm font-bold uppercase tracking-[0.2em] text-gray-500">No records found matching your filters</p>
@@ -696,11 +765,34 @@ const AdminView: React.FC = () => {
                       <input type="password" value={playerForm.password || ''} onChange={e => setPlayerForm({ ...playerForm, password: e.target.value })} className="w-full bg-[#0a0a0a] border border-white/10 rounded-2xl py-4 sm:py-5 px-5 text-sm sm:text-base font-medium focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 transition-all placeholder:text-gray-700" placeholder="••••••••" />
                     </div>
                   )}
-                  <div className="space-y-2">
-                    <label className="text-[10px] sm:text-xs text-gray-500 font-black uppercase tracking-widest ml-1">Account Role</label>
-                    <select value={playerForm.role} onChange={e => setPlayerForm({ ...playerForm, role: e.target.value as any })} className="w-full bg-[#0a0a0a] border border-white/10 rounded-2xl py-4 sm:py-5 px-5 text-sm sm:text-base font-medium focus:border-blue-500 focus:outline-none appearance-none cursor-pointer text-gray-300">
-                      <option value="member">🏋️ Member (Player)</option>
-                      <option value="trainer">🏆 Coach (Trainer)</option>
+                  <div>
+                    <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Member Role</label>
+                    <select
+                      className="w-full bg-[#111] border border-white/5 rounded-2xl py-4 px-4 text-sm focus:outline-none focus:border-blue-500/50 transition-all font-medium"
+                      value={playerForm.role}
+                      onChange={(e) => setPlayerForm({ ...playerForm, role: e.target.value as 'member' | 'trainer' })}
+                    >
+                      <option value="member">Player / Member</option>
+                      <option value="trainer">Trainer</option>
+                    </select>
+                  </div>
+                  {playerForm.role === 'member' && (
+                    <div>
+                      <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Subscription Price ($)</label>
+                      <input
+                        type="number"
+                        placeholder="e.g. 50"
+                        className="w-full bg-[#111] border border-white/5 rounded-2xl py-4 px-4 text-sm focus:outline-none focus:border-blue-500/50 transition-all placeholder:text-gray-600 font-medium"
+                        value={playerForm.subscriptionPrice}
+                        onChange={(e) => setPlayerForm({ ...playerForm, subscriptionPrice: Number(e.target.value) })}
+                      />
+                    </div>
+                  )}
+                  <div className="md:col-span-2">
+                    <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">{t.paymentMethod}</label>
+                    <select value={playerForm.paymentMethod} onChange={e => setPlayerForm({ ...playerForm, paymentMethod: e.target.value as PaymentMethod })} className="w-full bg-[#0a0a0a] border border-white/10 rounded-2xl py-4 sm:py-5 px-5 text-sm sm:text-base font-medium focus:border-blue-500 focus:outline-none appearance-none cursor-pointer text-gray-300">
+                      <option value="cash">{t.cash}</option>
+                      <option value="click">{t.click}</option>
                     </select>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
