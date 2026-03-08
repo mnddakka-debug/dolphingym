@@ -16,7 +16,8 @@ const puppeteer = require('puppeteer');
 
     try {
         console.log('Navigating...');
-        await page.goto('https://dolphingym.netlify.app', { waitUntil: 'domcontentloaded' });
+        // Use local dev server for debugging
+        await page.goto('http://localhost:3004', { waitUntil: 'domcontentloaded' });
         console.log('Page loaded');
 
         // login
@@ -63,6 +64,8 @@ const puppeteer = require('puppeteer');
         await new Promise(r => setTimeout(r, 2000));
 
         console.log('Action complete.');
+        await page.screenshot({ path: 'local_crash.png', fullPage: true });
+        console.log('Saved screenshot to local_crash.png');
 
     } catch (e) {
         console.error('Script Error:', e);

@@ -125,14 +125,14 @@ const AdminView: React.FC = () => {
     const thisYear = now.getFullYear();
     const lastMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
 
-    const newMembersThisMonth = members.filter(m => {
-      if (!m.memberSince) return false;
+    const newMembersThisMonth = (members || []).filter(m => {
+      if (!m?.memberSince) return false;
       const joined = new Date(m.memberSince);
       return joined.getMonth() === thisMonth && joined.getFullYear() === thisYear;
     }).length;
 
     const todayStr = now.toDateString();
-    const todayAttendance = attendance.filter(r => r.timestamp && new Date(r.timestamp).toDateString() === todayStr).length;
+    const todayAttendance = (attendance || []).filter(r => r?.timestamp && new Date(r.timestamp).toDateString() === todayStr).length;
 
     const monthAttendance = (attendance || []).filter(r => {
       if (!r?.timestamp) return false;
@@ -409,32 +409,21 @@ const AdminView: React.FC = () => {
             filteredMembers.map(member => (
               <div key={member.id} className="p-5 bg-gradient-to-br from-[#111] to-[#0a0a0a] rounded-[2rem] border border-white/5 flex items-center justify-between group hover:border-blue-500/30 transition-all shadow-md hover:shadow-xl">
                 <div className="flex items-center gap-4 sm:gap-5 min-w-0">
-                  <div className="w-12 h-12 rounded-full bg-blue-500/10 flex items-center justify-center text-blue-400 font-black text-lg uppercase border border-blue-500/20 shrink-0">{member.name[0]}</div>
+                  <div className="w-12 h-12 rounded-full bg-blue-500/10 flex items-center justify-center text-blue-400 font-black text-lg uppercase border border-blue-500/20 shrink-0">{(member?.name || '?')[0]}</div>
                   <div className="truncate">
-                    <p className="font-black text-sm sm:text-base uppercase tracking-tight truncate group-hover:text-blue-100 transition-colors">{member.name}</p>
+                    <p className="font-black text-sm sm:text-base uppercase tracking-tight truncate group-hover:text-blue-100 transition-colors">{member?.name}</p>
                     <div className="flex flex-wrap items-center gap-2 mt-1">
-                      <p className="text-[10px] sm:text-xs text-gray-500 font-bold truncate">{member.email}</p>
-                      <span className="text-[9px] bg-[#1a1a1a] px-2 py-0.5 rounded-md uppercase font-black text-blue-400/80 border border-white/5 shrink-0">{member.paymentMethod === 'click' ? t.click : t.cash}</span>
+                      <p className="text-[10px] sm:text-xs text-gray-500 font-bold truncate">{member?.email}</p>
+                      <span className="text-[9px] bg-[#1a1a1a] px-2 py-0.5 rounded-md uppercase font-black text-blue-400/80 border border-white/5 shrink-0">{member?.paymentMethod === 'click' ? t.click : t.cash}</span>
                     </div>
                   </div>
                 </div>
                 <div className="flex gap-2 shrink-0 ml-4 items-center">
-                  <button onClick={() => updateMember(member.id, { paymentStatus: member.paymentStatus === 'paid' ? 'pending' : 'paid' })} title="Toggle payment status" className={`p-2.5 rounded-xl text-xs font-black transition-all border ${member.paymentStatus === 'paid' ? 'bg-green-500/10 text-green-400 border-green-500/20 hover:bg-green-500/20' : 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20 hover:bg-yellow-500/20'}`}>
-                    {member.paymentStatus === 'paid' ? '✓' : '?'}
+                  <button onClick={() => updateMember(member?.id, { paymentStatus: member?.paymentStatus === 'paid' ? 'pending' : 'paid' })} title="Toggle payment status" className={`p-2.5 rounded-xl text-xs font-black transition-all border ${member?.paymentStatus === 'paid' ? 'bg-green-500/10 text-green-400 border-green-500/20 hover:bg-green-500/20' : 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20 hover:bg-yellow-500/20'}`}>
+                    {member?.paymentStatus === 'paid' ? '✓' : '?'}
                   </button>
-                  {(getPlayerStatus(member.subscriptionEndDate!) === 'expiring' || getPlayerStatus(member.subscriptionEndDate!) === 'expired') && (
-                    <a
-                      href={generateWhatsAppLink(member)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="p-3 bg-green-500/10 hover:bg-green-500 text-green-500 hover:text-white rounded-xl transition-all"
-                      title="Send WhatsApp Reminder"
-                    >
-                      <Send size={16} />
-                    </a>
-                  )}
                   <button onClick={() => handleOpenEdit(member)} className="p-3 bg-white/5 hover:bg-white/10 hover:text-blue-400 rounded-xl transition-all"><Edit2 size={16} /></button>
-                  <button onClick={() => deleteMember(member.id)} className="p-3 bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white rounded-xl transition-all"><Trash2 size={16} /></button>
+                  <button onClick={() => deleteMember(member?.id)} className="p-3 bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white rounded-xl transition-all"><Trash2 size={16} /></button>
                 </div>
               </div>
             ))
@@ -449,24 +438,24 @@ const AdminView: React.FC = () => {
                       <Hammer size={26} />
                     </div>
                     <div className="truncate">
-                      <h4 className="font-black text-sm sm:text-base uppercase tracking-tight truncate group-hover:text-blue-100 transition-colors">{language === 'en' ? item.nameEn : item.nameAr}</h4>
-                      <p className="text-[10px] sm:text-xs text-gray-500 font-bold uppercase tracking-widest mt-1 truncate">{t[item.category]} • {t.quantity}: <span className="text-gray-300">{item.quantity}</span></p>
+                      <h4 className="font-black text-sm sm:text-base uppercase tracking-tight truncate group-hover:text-blue-100 transition-colors">{language === 'ar' ? (item?.nameAr || '') : (item?.nameEn || '')}</h4>
+                      <p className="text-[10px] sm:text-xs text-gray-500 font-bold uppercase tracking-widest mt-1 truncate">{t[item?.category as keyof typeof t] || 'Unit'} • {t.quantity || 'Qty'}: <span className="text-gray-300">{item?.quantity || 0}</span></p>
                     </div>
                   </div>
-                  <span className={`text-[9px] sm:text-[10px] font-black uppercase px-3 py-1.5 rounded-lg border whitespace-nowrap shrink-0 ${getStatusStyle(item.status)}`}>{t[item.status]}</span>
+                  <span className={`text-[9px] sm:text-[10px] font-black uppercase px-3 py-1.5 rounded-lg border whitespace-nowrap shrink-0 ${getStatusStyle(item?.status || 'available')}`}>{t[item?.status as keyof typeof t] || item?.status}</span>
                 </div>
                 <div className="flex items-center justify-between pt-4 border-t border-white/5">
                   <div className="flex items-center gap-2 text-gray-500 group-hover:text-gray-400 transition-colors">
                     <Clock size={14} />
-                    <span className="text-[10px] sm:text-xs font-bold uppercase">{t.lastMaintenance}: {item.lastMaintenanceDate}</span>
+                    <span className="text-[10px] sm:text-xs font-bold uppercase">{t.lastMaintenance || 'Last Maintenance'}: {item?.lastMaintenanceDate || 'N/A'}</span>
                   </div>
                   <div className="flex gap-2 shrink-0">
                     <button onClick={() => handleOpenEdit(item)} className="p-2.5 bg-white/5 hover:bg-white/10 hover:text-blue-400 rounded-xl transition-all"><Edit2 size={14} /></button>
-                    <button onClick={() => deleteEquipment(item.id)} className="p-2.5 bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white rounded-xl transition-all"><Trash size={14} /></button>
+                    <button onClick={() => deleteEquipment(item?.id)} className="p-2.5 bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white rounded-xl transition-all"><Trash size={14} /></button>
                   </div>
                 </div>
                 {/* Predictive Maintenance Bar */}
-                {item.usageHours !== undefined && item.maintenanceIntervalHours !== undefined && (
+                {item?.usageHours !== undefined && item?.maintenanceIntervalHours !== undefined && item.maintenanceIntervalHours > 0 && (
                   <div className="pt-4 border-t border-white/5 space-y-2">
                     <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-gray-500">
                       <span>Usage</span>
@@ -595,31 +584,32 @@ const AdminView: React.FC = () => {
                 </div>
                 <div className="bg-purple-500/5 border border-purple-500/20 p-5 rounded-3xl">
                   <p className="text-[10px] text-purple-400 font-black uppercase tracking-widest mb-2">Monthly Sessions</p>
-                  <p className="text-3xl font-black text-purple-400">{analyticsData.monthAttendance.length}</p>
+                  <p className="text-3xl font-black text-purple-400">{analyticsData?.monthAttendance?.length || 0}</p>
                   <p className="text-[10px] text-gray-500 mt-1">Total this month</p>
                 </div>
               </div>
-              {/* Top members */}
-              <div className="bg-[#0a0a0a] rounded-3xl border border-white/5 overflow-hidden">
-                <div className="p-5 border-b border-white/5">
-                  <h4 className="font-black text-sm uppercase tracking-widest text-blue-400">{t.topMembers} — This Month</h4>
-                </div>
-                {analyticsData.topMembers.length === 0 ? (
-                  <p className="text-center text-gray-600 py-10 text-sm">No attendance data yet</p>
-                ) : analyticsData.topMembers.map((m, i) => (
-                  <div key={m.id} className="flex items-center justify-between px-5 py-4 border-b border-white/5 last:border-0">
-                    <div className="flex items-center gap-3">
-                      <span className={`text-lg font-black ${i === 0 ? 'text-yellow-400' : i === 1 ? 'text-gray-300' : i === 2 ? 'text-orange-400' : 'text-gray-600'}`}>{i + 1}</span>
-                      <p className="font-bold text-sm">{m.name}</p>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <div className="h-2 w-20 bg-white/5 rounded-full overflow-hidden">
-                        <div className="h-full bg-blue-500 rounded-full" style={{ width: `${Math.min(100, (m.sessions / 30) * 100)}%` }} />
+
+              {/* Members Analytics List */}
+              <div className="bg-[#111] p-6 rounded-3xl border border-white/5">
+                <h4 className="font-black text-sm uppercase tracking-widest mb-4">Top Members</h4>
+                <div className="space-y-3">
+                  {(!analyticsData?.topMembers || analyticsData.topMembers.length === 0) ? (
+                    <p className="text-sm text-gray-500">No data available for top members.</p>
+                  ) : analyticsData.topMembers.map((m, i) => (
+                    <div key={m?.id || i} className="flex items-center justify-between p-4 bg-[#0a0a0a] rounded-2xl border border-white/5">
+                      <div className="flex items-center gap-4">
+                        <div className="w-8 h-8 rounded-full bg-blue-500/10 text-blue-500 flex items-center justify-center font-black text-xs">#{i + 1}</div>
+                        <div>
+                          <p className="font-bold text-sm text-gray-200">{m?.name || 'Unknown'}</p>
+                          <p className="text-xs text-gray-500">{(m as any)?.sessions || 0} visits this month</p>
+                        </div>
                       </div>
-                      <span className="text-xs font-black text-blue-400 w-8 text-right">{m.sessions}</span>
+                      <div className="text-green-500">
+                        <Trophy size={16} />
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
             </div>
           )}
