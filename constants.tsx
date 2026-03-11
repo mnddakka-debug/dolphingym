@@ -213,6 +213,7 @@ export const TRANSLATIONS = {
     aiTools: "AI & Smart Tools",
     gamification: "Gamification & Community",
     services: "Gym Services",
+    edit: "Edit Profile Info"
   },
   ar: {
     appName: "دولفين جيم",
@@ -416,6 +417,7 @@ export const TRANSLATIONS = {
     aiTools: "أدوات الذكاء الاصطناعي",
     gamification: "المجتمع والتحديات",
     services: "خدمات النادي",
+    edit: "تعديل البيانات"
   }
 };
 

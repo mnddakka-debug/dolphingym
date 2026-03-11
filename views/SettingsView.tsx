@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { TRANSLATIONS } from '../constants';
-import { Mail, Lock, User as UserIcon, Check, Globe, LogOut, ShieldCheck, Phone, HeartPulse, Ruler, Weight, ShieldAlert, Bell, Send, Share2, Users, MonitorPlay, Watch, SmartphoneNfc } from 'lucide-react';
+import { Mail, Lock, User as UserIcon, Check, Globe, LogOut, ShieldCheck, Phone, HeartPulse, Ruler, Weight, ShieldAlert, Bell, Send, Share2, Users, MonitorPlay, Watch, SmartphoneNfc, Camera } from 'lucide-react';
 
 const SettingsView: React.FC = () => {
   const {
@@ -34,6 +34,8 @@ const SettingsView: React.FC = () => {
   const [emergencyContact, setEmergencyContact] = useState(user?.emergencyContact || '');
   const [weight, setWeight] = useState(user?.weightKg?.toString() || user?.weight?.toString() || '');
   const [height, setHeight] = useState(user?.heightCm?.toString() || user?.height?.toString() || '');
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const [message, setMessage] = useState<string | null>(null);
 
@@ -64,6 +66,49 @@ const SettingsView: React.FC = () => {
       setTimeout(() => setMessage(null), 3000);
     }
   };
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX_SIZE = 256;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > MAX_SIZE) {
+            height *= MAX_SIZE / width;
+            width = MAX_SIZE;
+          }
+        } else {
+          if (height > MAX_SIZE) {
+            width *= MAX_SIZE / height;
+            height = MAX_SIZE;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(img, 0, 0, width, height);
+
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+        updateCurrentUserProfile({ profileImage: dataUrl });
+        setIsUploading(false);
+        setMessage(language === 'en' ? 'Profile picture updated!' : 'تم تحديث الصورة الشخصية!');
+        setTimeout(() => setMessage(null), 3000);
+      };
+      img.src = event.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+  };
+
 
   const handleShare = async () => {
     const shareData = {
@@ -126,12 +171,26 @@ const SettingsView: React.FC = () => {
             </div>
 
             <div className="flex flex-col items-center justify-center mb-6 relative z-10 mt-2">
-              <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full border-4 border-[#1a1a1a] shadow-xl overflow-hidden bg-black/50 relative flex items-center justify-center">
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleImageUpload}
+                accept="image/*"
+                className="hidden"
+              />
+              <div
+                className={`w-24 h-24 sm:w-28 sm:h-28 rounded-full border-4 border-[#1a1a1a] shadow-xl overflow-hidden bg-black/50 relative flex items-center justify-center cursor-pointer group transition-all duration-300 ${isUploading ? 'opacity-50 pointer-events-none' : 'hover:border-blue-500/50'}`}
+                onClick={() => fileInputRef.current?.click()}
+              >
                 {user?.profileImage ? (
                   <img src={user.profileImage} alt={user.name} className="w-full h-full object-cover" />
                 ) : (
                   <UserIcon size={40} className="text-gray-700 opacity-50" />
                 )}
+                <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                  <Camera size={24} className="text-white drop-shadow-lg mb-1" />
+                  <span className="text-[10px] font-bold text-white uppercase tracking-widest">{t.edit || 'Edit'}</span>
+                </div>
               </div>
             </div>
 
