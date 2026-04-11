@@ -1,0 +1,1 @@
+{"name":"Dolphin Gym Management","short_name":"Dolphin Gym","description":"Premier Gym Management Suite","start_url":"/dolphingym/","display":"standalone","background_color":"#000000","theme_color":"#000000","lang":"en","scope":"/dolphingym/","icons":[{"src":"pwa-192x192.png","sizes":"192x192","type":"image/png"},{"src":"pwa-512x512.png","sizes":"512x512","type":"image/png"}]}

@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Dolphin Gym</title>
+
+  <!-- PWA Setup -->
+  <link rel="manifest" href="/dolphingym/manifest.json" />
+  <meta name="theme-color" content="#3b82f6" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <link rel="icon" type="image/x-icon" href="/dolphingym/favicon.ico" />
+  <link rel="icon" type="image/png" href="/dolphingym/logo.png" />
+  <link rel="apple-touch-icon" href="/dolphingym/apple-touch-icon.png" />
+  <script src="https://cdn.tailwindcss.com" defer></script>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Cairo:wght@300;400;600;700;800;900&display=swap"
+    rel="stylesheet">
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #000000;
+      color: #ffffff;
+      font-family: 'Inter', 'Cairo', sans-serif;
+      overflow-x: hidden;
+    }
+
+    .font-arabic {
+      font-family: 'Cairo', sans-serif;
+    }
+
+    .blue-gradient {
+      background: linear-gradient(135deg, #3b82f6, #60a5fa, #2563eb, #93c5fd, #1d4ed8);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .gold-gradient {
+      background: linear-gradient(135deg, #3b82f6, #60a5fa, #2563eb, #93c5fd, #1d4ed8);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .blue-bg {
+      background: linear-gradient(135deg, #1e40af, #3b82f6);
+    }
+
+    .gold-bg {
+      background: linear-gradient(135deg, #1e40af, #3b82f6);
+    }
+
+    .blue-glow {
+      box-shadow: 0 0 25px rgba(59, 130, 246, 0.4);
+    }
+
+    .gold-glow {
+      box-shadow: 0 0 20px rgba(59, 130, 246, 0.4);
+    }
+
+    .shield-shape {
+      clip-path: polygon(0% 0%, 100% 0%, 100% 80%, 50% 100%, 0% 80%);
+    }
+
+    @keyframes bounce-subtle {
+
+      0%,
+      100% {
+        transform: translateY(0);
+      }
+
+      50% {
+        transform: translateY(-5px);
+      }
+    }
+
+    .animate-bounce-subtle {
+      animation: bounce-subtle 2s infinite ease-in-out;
+    }
+
+    @keyframes scan {
+
+      0%,
+      100% {
+        transform: translateY(0);
+      }
+
+      50% {
+        transform: translateY(256px);
+      }
+    }
+
+    /* Hide scrollbar */
+    ::-webkit-scrollbar {
+      display: none;
+    }
+
+    body {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+
+    /* ── 3D Electric Cards ─────────────────────────────── */
+    .electric-card {
+      position: relative;
+      transform-style: preserve-3d;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+      cursor: pointer;
+      overflow: hidden;
+    }
+
+    /* holographic shimmer sweep */
+    .electric-card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(115deg,
+          transparent 20%,
+          rgba(255, 255, 255, 0.06) 40%,
+          rgba(255, 255, 255, 0.12) 50%,
+          rgba(255, 255, 255, 0.06) 60%,
+          transparent 80%);
+      background-size: 200% 100%;
+      opacity: 0;
+      transition: opacity 0.3s;
+      pointer-events: none;
+      border-radius: inherit;
+      z-index: 2;
+      animation: holo-sweep 3s ease-in-out infinite;
+    }
+
+    .electric-card:hover::before {
+      opacity: 1;
+    }
+
+    /* animated electric border */
+    .electric-card::after {
+      content: '';
+      position: absolute;
+      inset: -1px;
+      border-radius: inherit;
+      background: conic-gradient(from var(--border-angle, 0deg),
+          transparent 0%,
+          var(--ec-color, #3b82f6) 15%,
+          transparent 30%);
+      opacity: 0;
+      transition: opacity 0.3s;
+      pointer-events: none;
+      z-index: 0;
+      animation: border-spin 2.5s linear infinite;
+    }
+
+    .electric-card:hover::after {
+      opacity: 1;
+    }
+
+    /* lift + tilt on hover */
+    .electric-card:hover {
+      transform: translateY(-6px) rotateX(4deg) rotateY(-2deg) scale(1.02);
+    }
+
+    .electric-card:active {
+      transform: translateY(-2px) scale(0.98);
+    }
+
+    /* inner content above pseudo-elements */
+    .electric-card-inner {
+      position: relative;
+      z-index: 1;
+    }
+
+    /* corner arc sparks */
+    @keyframes arc-spark {
+      0% {
+        opacity: 0;
+        transform: scale(0.5) rotate(0deg);
+      }
+
+      50% {
+        opacity: 1;
+        transform: scale(1.2) rotate(180deg);
+      }
+
+      100% {
+        opacity: 0;
+        transform: scale(0.5) rotate(360deg);
+      }
+    }
+
+    .electric-spark {
+      position: absolute;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--ec-color, #3b82f6);
+      filter: blur(2px);
+      animation: arc-spark 1.8s ease-in-out infinite;
+      pointer-events: none;
+      z-index: 3;
+    }
+
+    .electric-spark.top-right {
+      top: 6px;
+      right: 6px;
+      animation-delay: 0s;
+    }
+
+    .electric-spark.bottom-left {
+      bottom: 6px;
+      left: 6px;
+      animation-delay: 0.9s;
+    }
+
+    /* energy pulse ring */
+    @keyframes pulse-ring {
+      0% {
+        transform: scale(0.8);
+        opacity: 0.8;
+      }
+
+      100% {
+        transform: scale(2.4);
+        opacity: 0;
+      }
+    }
+
+    .energy-pulse {
+      position: absolute;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border: 1.5px solid var(--ec-color, #3b82f6);
+      animation: pulse-ring 2s ease-out infinite;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* holo-sweep keyframe */
+    @keyframes holo-sweep {
+      0% {
+        background-position: 200% 0;
+      }
+
+      100% {
+        background-position: -200% 0;
+      }
+    }
+
+    /* spinning border angle via @property (Chrome) / fallback */
+    @property --border-angle {
+      syntax: '<angle>';
+      initial-value: 0deg;
+      inherits: false;
+    }
+
+    @keyframes border-spin {
+      to {
+        --border-angle: 360deg;
+      }
+    }
+
+    /* glow shadow helpers */
+    .ec-glow-orange {
+      box-shadow: 0 0 0 1px rgba(249, 115, 22, 0.15), 0 8px 32px rgba(249, 115, 22, 0.12);
+    }
+
+    .ec-glow-blue {
+      box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.15), 0 8px 32px rgba(59, 130, 246, 0.12);
+    }
+
+    .ec-glow-green {
+      box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.15), 0 8px 32px rgba(34, 197, 94, 0.12);
+    }
+
+    .ec-glow-purple {
+      box-shadow: 0 0 0 1px rgba(168, 85, 247, 0.15), 0 8px 32px rgba(168, 85, 247, 0.12);
+    }
+
+    .ec-glow-orange:hover {
+      box-shadow: 0 0 0 1px rgba(249, 115, 22, 0.5), 0 16px 48px rgba(249, 115, 22, 0.3), 0 0 80px rgba(249, 115, 22, 0.1);
+    }
+
+    .ec-glow-blue:hover {
+      box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.5), 0 16px 48px rgba(59, 130, 246, 0.3), 0 0 80px rgba(59, 130, 246, 0.1);
+    }
+
+    .ec-glow-green:hover {
+      box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.5), 0 16px 48px rgba(34, 197, 94, 0.3), 0 0 80px rgba(34, 197, 94, 0.1);
+    }
+
+    .ec-glow-purple:hover {
+      box-shadow: 0 0 0 1px rgba(168, 85, 247, 0.5), 0 16px 48px rgba(168, 85, 247, 0.3), 0 0 80px rgba(168, 85, 247, 0.1);
+    }
+  </style>
+
+  <link rel="stylesheet" href="/index.css">
+  <script type="importmap">
+{
+  "imports": {
+    "@google/genai": "https://esm.sh/@google/genai@^1.37.0",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+    "react/": "https://esm.sh/react@^19.2.3/",
+    "react": "https://esm.sh/react@^19.2.3",
+    "recharts": "https://esm.sh/recharts@^3.6.0",
+    "lucide-react": "https://esm.sh/lucide-react@^0.562.0",
+    "express": "https://esm.sh/express@^5.2.1",
+    "jsonwebtoken": "https://esm.sh/jsonwebtoken@^9.0.3",
+    "uuid": "https://esm.sh/uuid@^13.0.0",
+    "jsqr": "https://esm.sh/jsqr@1.4.0"
+  }
+}
+</script>
+  <script type="module" crossorigin src="/dolphingym/assets/index-TBoV5YO0.js"></script>
+  <link rel="stylesheet" crossorigin href="/dolphingym/assets/index-uojLf1gV.css">
+<link rel="manifest" href="/dolphingym/manifest.webmanifest"><script id="vite-plugin-pwa:register-sw" src="/dolphingym/registerSW.js"></script></head>
+
+<body>
+  <div id="root">
+    <!-- Pure HTML fallback spinner shown while React is loading -->
+    <div id="html-loader"
+      style="display:flex;align-items:center;justify-content:center;height:100vh;background:radial-gradient(ellipse at 20% 50%,#0a1628 0%,#000510 60%,#010a1a 100%);flex-direction:column;gap:16px;">
+      <div
+        style="width:56px;height:56px;border:4px solid rgba(59,130,246,0.2);border-top:4px solid #3b82f6;border-radius:50%;animation:htmlspin 1s linear infinite;">
+      </div>
+      <p
+        style="font-size:11px;letter-spacing:0.3em;text-transform:uppercase;color:#3b82f6;font-family:Inter,sans-serif;animation:htmlpulse 2s ease-in-out infinite;">
+        Dolphin Gym</p>
+    </div>
+  </div>
+  <style>
+    @keyframes htmlspin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    @keyframes htmlpulse {
+
+      0%,
+      100% {
+        opacity: 0.5
+      }
+
+      50% {
+        opacity: 1
+      }
+    }
+  </style>
+  <script>
+    // Remove HTML loader once React has mounted
+    document.addEventListener('DOMContentLoaded', function () {
+      requestAnimationFrame(function checkReact() {
+        var loader = document.getElementById('html-loader');
+        var root = document.getElementById('root');
+        if (loader && root && root.children.length > 1) {
+          loader.remove();
+        } else if (loader) {
+          requestAnimationFrame(checkReact);
+        }
+      });
+    });
+  </script>
+</body>
+
+</html>
