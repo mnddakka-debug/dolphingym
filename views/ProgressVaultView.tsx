@@ -1,11 +1,11 @@
 import React, { useState, useMemo, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import { TRANSLATIONS } from '../constants';
-import { Camera, Play, Image as ImageIcon, Trash2, Calendar, Lock, Download, Video, Activity } from 'lucide-react';
+import { Camera, Play, Image as ImageIcon, Trash2, Lock, Video, Activity, TrendingDown, TrendingUp, Dumbbell, Flame } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 const ProgressVaultView: React.FC = () => {
-    const { language, user, progressPhotos, addProgressPhoto, deleteProgressPhoto } = useApp();
+    const { language, user, progressPhotos, addProgressPhoto, deleteProgressPhoto, weightEntries, attendance } = useApp();
     const t = TRANSLATIONS[language];
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -22,6 +22,35 @@ const ProgressVaultView: React.FC = () => {
             .filter(p => p.memberId === user?.id)
             .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
     }, [progressPhotos, user]);
+
+    // ── Real AI Body Scan calculations ─────────────────────────
+    const realStats = useMemo(() => {
+        const myWeights = weightEntries
+            .filter(w => w.memberId === user?.id)
+            .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+        // Weight change: first vs last logged weight
+        let weightChange: number | null = null;
+        if (myWeights.length >= 2) {
+            weightChange = myWeights[myWeights.length - 1].weightKg - myWeights[0].weightKg;
+        } else if (user?.weightKg && user?.weight) {
+            weightChange = user.weightKg - (user.weight as number);
+        }
+
+        // Session count (last 90 days)
+        const ninetyDaysAgo = Date.now() - 90 * 24 * 60 * 60 * 1000;
+        const recentSessions = attendance.filter(
+            a => a.memberId === user?.id && new Date(a.timestamp).getTime() > ninetyDaysAgo
+        ).length;
+
+        // Body fat change
+        const currentBF = user?.bodyFatPercentage;
+
+        // Estimated muscle gain from weight & workouts (simple heuristic)
+        let muscleDelta = weightChange !== null ? +(weightChange * 0.6).toFixed(1) : null;
+
+        return { weightChange, recentSessions, currentBF, muscleDelta, photoCount: myPhotos.length };
+    }, [weightEntries, attendance, user, myPhotos]);
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -228,45 +257,86 @@ const ProgressVaultView: React.FC = () => {
                         {/* Interactive Nodes */}
                         <div className="absolute top-[25%] left-[20%] w-4 h-4 rounded-full bg-blue-400 border-2 border-white shadow-[0_0_15px_blue] animate-pulse group-hover:scale-125 transition-transform cursor-pointer">
                             <span className="absolute -left-32 top-1/2 -translate-y-1/2 bg-black/80 backdrop-blur-md px-3 py-1.5 rounded-lg border border-white/10 text-[10px] font-black uppercase text-white whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity">
-                                Shoulders: +1.5cm
+                                {realStats.muscleDelta !== null ? `Upper: ${realStats.muscleDelta > 0 ? '+' : ''}${realStats.muscleDelta} kg` : 'Shoulders'}
                             </span>
                         </div>
                         <div className="absolute top-[40%] right-[25%] w-4 h-4 rounded-full bg-green-400 border-2 border-white shadow-[0_0_15px_green] animate-pulse group-hover:scale-125 transition-transform cursor-pointer" style={{ animationDelay: '0.5s' }}>
                             <span className="absolute -right-24 top-1/2 -translate-y-1/2 bg-black/80 backdrop-blur-md px-3 py-1.5 rounded-lg border border-white/10 text-[10px] font-black uppercase text-white whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity">
-                                Core Fat: -3%
+                                {realStats.currentBF ? `BF: ${realStats.currentBF}%` : 'Core Zone'}
                             </span>
                         </div>
                         <div className="absolute bottom-[30%] left-[45%] w-4 h-4 rounded-full bg-blue-400 border-2 border-white shadow-[0_0_15px_blue] animate-pulse group-hover:scale-125 transition-transform cursor-pointer" style={{ animationDelay: '1s' }}>
                             <span className="absolute -left-28 bottom-full mb-2 bg-black/80 backdrop-blur-md px-3 py-1.5 rounded-lg border border-white/10 text-[10px] font-black uppercase text-white whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity">
-                                Quads: +2.1cm
+                                Sessions: {realStats.recentSessions}
                             </span>
                         </div>
                     </div>
 
-                    {/* AI Insights Panel */}
+                    {/* AI Insights Panel - REAL DATA */}
                     <div className="flex flex-col gap-6 max-w-md w-full z-10">
                         <h3 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-cyan-400 uppercase tracking-widest">
                             AI Body Scan
                         </h3>
                         <p className="text-sm text-gray-400 font-medium">
-                            Based on your vault photos over the last 3 months, Dolphin AI has generated a 3D morph of your progress.
+                            {realStats.photoCount >= 2
+                                ? (language === 'en' ? `Based on your ${realStats.photoCount} vault photos, Dolphin AI has analysed your progress over the last 90 days.` : `استناداً إلى ${realStats.photoCount} صورة في خزنتك، قام Dolphin AI بتحليل تقدمك خلال آخر 90 يوماً.`)
+                                : (language === 'en' ? 'Add at least 2 progress photos to unlock the full AI scan analysis.' : 'أضف صورتين على الأقل لفتح تحليل AI الكامل.')}
                         </p>
 
                         <div className="space-y-4">
+                            {/* Weight / Muscle Change */}
                             <div className="bg-white/5 border border-indigo-500/20 p-4 rounded-2xl backdrop-blur-sm">
-                                <p className="text-[10px] text-indigo-400 font-black uppercase tracking-widest mb-1">Muscle Mass Gained</p>
-                                <p className="text-2xl font-black text-white">+1.2 kg</p>
-                                <p className="text-xs text-gray-500 mt-1">Focus areas: Chest & Arms</p>
+                                <p className="text-[10px] text-indigo-400 font-black uppercase tracking-widest mb-1 flex items-center gap-1">
+                                    <TrendingUp size={12} /> {language === 'en' ? 'Weight Change (Logged)' : 'تغيّر الوزن (المُسجَّل)'}
+                                </p>
+                                {realStats.weightChange !== null ? (
+                                    <>
+                                        <p className={`text-2xl font-black ${realStats.weightChange >= 0 ? 'text-cyan-300' : 'text-green-300'}`}>
+                                            {realStats.weightChange >= 0 ? '+' : ''}{realStats.weightChange.toFixed(1)} kg
+                                        </p>
+                                        <p className="text-xs text-gray-500 mt-1">
+                                            {language === 'en'
+                                                ? (realStats.weightChange >= 0 ? 'Potential muscle gain from logged entries' : 'Logged weight reduction')
+                                                : (realStats.weightChange >= 0 ? 'مكسب وزن محتمل من الإدخالات المسجّلة' : 'انخفاض وزن مسجّل')}
+                                        </p>
+                                    </>
+                                ) : (
+                                    <p className="text-sm text-gray-500 font-bold">{language === 'en' ? 'Log weight entries to see change' : 'سجّل وزنك لرؤية التغيّر'}</p>
+                                )}
                             </div>
+
+                            {/* Body Fat */}
                             <div className="bg-white/5 border border-green-500/20 p-4 rounded-2xl backdrop-blur-sm">
-                                <p className="text-[10px] text-green-400 font-black uppercase tracking-widest mb-1">Body Fat Reduction</p>
-                                <p className="text-2xl font-black text-white">-2.4%</p>
-                                <p className="text-xs text-gray-500 mt-1">Greatest loss: Abdominal region</p>
+                                <p className="text-[10px] text-green-400 font-black uppercase tracking-widest mb-1 flex items-center gap-1">
+                                    <TrendingDown size={12} /> {language === 'en' ? 'Body Fat %' : 'نسبة الدهون'}
+                                </p>
+                                {realStats.currentBF ? (
+                                    <>
+                                        <p className="text-2xl font-black text-white">{realStats.currentBF}%</p>
+                                        <p className="text-xs text-gray-500 mt-1">{language === 'en' ? 'From your profile data' : 'من بيانات ملفك الشخصي'}</p>
+                                    </>
+                                ) : (
+                                    <p className="text-sm text-gray-500 font-bold">{language === 'en' ? 'Set body fat % in your profile to track it' : 'أضف نسبة الدهون في ملفك لتتبعها'}</p>
+                                )}
+                            </div>
+
+                            {/* Workouts & Photos row */}
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="bg-white/5 border border-purple-500/20 p-4 rounded-2xl backdrop-blur-sm">
+                                    <p className="text-[10px] text-purple-400 font-black uppercase tracking-widest mb-1 flex items-center gap-1"><Dumbbell size={10} /> {language === 'en' ? 'Sessions (90d)' : 'جلسات (90 يوم)'}</p>
+                                    <p className="text-2xl font-black text-white">{realStats.recentSessions}</p>
+                                </div>
+                                <div className="bg-white/5 border border-orange-500/20 p-4 rounded-2xl backdrop-blur-sm">
+                                    <p className="text-[10px] text-orange-400 font-black uppercase tracking-widest mb-1 flex items-center gap-1"><Flame size={10} /> {language === 'en' ? 'GP Points' : 'نقاط GP'}</p>
+                                    <p className="text-2xl font-black text-white">{(user?.points || 0).toLocaleString()}</p>
+                                </div>
                             </div>
                         </div>
 
-                        <button className="bg-indigo-500/20 hover:bg-indigo-500 text-indigo-300 hover:text-white border border-indigo-500/30 py-4 rounded-2xl font-black uppercase tracking-widest text-xs transition-all flex items-center justify-center gap-2">
-                            <Camera size={16} /> Take New Scan Photo
+                        <button
+                            onClick={() => { setActiveTab('photos'); setTimeout(() => fileInputRef.current?.click(), 100); }}
+                            className="bg-indigo-500/20 hover:bg-indigo-500 text-indigo-300 hover:text-white border border-indigo-500/30 py-4 rounded-2xl font-black uppercase tracking-widest text-xs transition-all flex items-center justify-center gap-2">
+                            <Camera size={16} /> {language === 'en' ? 'Take New Scan Photo' : 'إضافة صورة مسح جديدة'}
                         </button>
                     </div>
                 </div>

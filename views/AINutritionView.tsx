@@ -8,6 +8,7 @@ const MOCK_MEALS = [
     { nameEn: 'Salmon & Asparagus', nameAr: 'سلمون مع هليون', protein: '35g', carbs: '10g', fat: '20g', calories: 350 },
     { nameEn: 'Whey Protein Shake (Banana)', nameAr: 'مخفوق بروتين مصل اللبن (موز)', protein: '30g', carbs: '25g', fat: '2g', calories: 230 },
 ];
+// Render 
 
 const AINutritionView: React.FC = () => {
     const { language, weightEntries } = useApp();

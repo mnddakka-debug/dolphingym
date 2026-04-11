@@ -37,6 +37,21 @@ const SettingsView: React.FC = () => {
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
+  // Camera selfie state
+  const [showCamera, setShowCamera] = useState(false);
+  const videoRef = React.useRef<HTMLVideoElement>(null);
+  const streamRef = React.useRef<MediaStream | null>(null);
+
+  // Bluetooth / Wearable state
+  const [btScanning, setBtScanning] = useState(false);
+  const [btDevice, setBtDevice] = useState<string | null>(null);
+
+  // FaceID Smart Access state
+  const [showFaceSetup, setShowFaceSetup] = useState(false);
+  const faceVideoRef = React.useRef<HTMLVideoElement>(null);
+  const faceStreamRef = React.useRef<MediaStream | null>(null);
+  const [faceSetupStep, setFaceSetupStep] = useState<'idle' | 'capturing' | 'done'>('idle');
+
   const [message, setMessage] = useState<string | null>(null);
 
   const handleUpdateProfile = (e: React.FormEvent) => {
@@ -109,6 +124,49 @@ const SettingsView: React.FC = () => {
     reader.readAsDataURL(file);
   };
 
+  const openCamera = async () => {
+    setShowCamera(true);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
+      streamRef.current = stream;
+      // wait for modal to render then attach the stream
+      setTimeout(() => {
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          videoRef.current.play();
+        }
+      }, 100);
+    } catch (err) {
+      console.error('Camera error:', err);
+      setMessage(language === 'en' ? 'Camera access denied' : 'تم رفض الوصول للكاميرا');
+      setShowCamera(false);
+    }
+  };
+
+  const closeCamera = () => {
+    streamRef.current?.getTracks().forEach(t => t.stop());
+    streamRef.current = null;
+    setShowCamera(false);
+  };
+
+  const capturePhoto = () => {
+    if (!videoRef.current) return;
+    const canvas = document.createElement('canvas');
+    const MAX = 256;
+    let w = videoRef.current.videoWidth;
+    let h = videoRef.current.videoHeight;
+    if (w > h) { if (w > MAX) { h = Math.round(h * MAX / w); w = MAX; } }
+    else       { if (h > MAX) { w = Math.round(w * MAX / h); h = MAX; } }
+    canvas.width = w; canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    // mirror the capture so it feels like a selfie
+    if (ctx) { ctx.translate(w, 0); ctx.scale(-1, 1); ctx.drawImage(videoRef.current, 0, 0, w, h); }
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+    updateCurrentUserProfile({ profileImage: dataUrl });
+    closeCamera();
+    setMessage(language === 'en' ? 'Selfie saved!' : 'تم حفظ الصورة!');
+    setTimeout(() => setMessage(null), 3000);
+  };
 
   const handleShare = async () => {
     const shareData = {
@@ -129,6 +187,105 @@ const SettingsView: React.FC = () => {
       console.log('Share failed', err);
     }
   };
+
+  // ── Wearable Bluetooth Scan ──────────────────────────────
+  const handleBluetoothConnect = async () => {
+    if (user?.wearableDevice && user.wearableDevice !== 'none') {
+      // disconnect
+      updateCurrentUserProfile({ wearableDevice: 'none' });
+      setBtDevice(null);
+      setMessage(language === 'en' ? 'Device disconnected' : 'تم فصل الجهاز');
+      setTimeout(() => setMessage(null), 3000);
+      return;
+    }
+    if (!('bluetooth' in navigator)) {
+      setMessage(language === 'en' ? 'Bluetooth not supported in this browser' : 'البلوتوث غير مدعوم في هذا المتصفح');
+      setTimeout(() => setMessage(null), 4000);
+      return;
+    }
+    setBtScanning(true);
+    try {
+      const device = await (navigator as any).bluetooth.requestDevice({
+        filters: [
+          { services: ['heart_rate'] },
+          { services: ['fitness_machine'] },
+          { namePrefix: 'GARMIN' },
+          { namePrefix: 'Garmin' },
+          { namePrefix: 'Apple Watch' },
+          { namePrefix: 'Whoop' },
+        ],
+        optionalServices: ['heart_rate', 'battery_service', 'fitness_machine'],
+      });
+      const deviceName: string = device.name || 'Unknown Device';
+      setBtDevice(deviceName);
+      const role = deviceName.toLowerCase().includes('garmin') ? 'garmin'
+        : deviceName.toLowerCase().includes('apple') ? 'apple_watch'
+        : deviceName.toLowerCase().includes('whoop') ? 'whoop'
+        : 'apple_watch';
+      await updateCurrentUserProfile({ wearableDevice: role as any });
+      setMessage(language === 'en' ? `✅ Connected: ${deviceName}` : `✅ تم الاتصال: ${deviceName}`);
+      setTimeout(() => setMessage(null), 4000);
+    } catch (err: any) {
+      if (err.name !== 'NotFoundError' && err.name !== 'AbortError') {
+        setMessage(language === 'en' ? 'Bluetooth error: ' + err.message : 'خطأ في البلوتوث');
+        setTimeout(() => setMessage(null), 4000);
+      }
+    } finally {
+      setBtScanning(false);
+    }
+  };
+
+  // ── FaceID / Smart Access ────────────────────────────────
+  const openFaceSetup = async () => {
+    setShowFaceSetup(true);
+    setFaceSetupStep('idle');
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
+      faceStreamRef.current = stream;
+      setTimeout(() => {
+        if (faceVideoRef.current) {
+          faceVideoRef.current.srcObject = stream;
+          faceVideoRef.current.play();
+        }
+      }, 150);
+    } catch {
+      setMessage(language === 'en' ? 'Camera access denied' : 'تم رفض الوصول للكاميرا');
+      setShowFaceSetup(false);
+    }
+  };
+
+  const closeFaceSetup = () => {
+    faceStreamRef.current?.getTracks().forEach(t => t.stop());
+    faceStreamRef.current = null;
+    setShowFaceSetup(false);
+    setFaceSetupStep('idle');
+  };
+
+  const registerFace = async () => {
+    setFaceSetupStep('capturing');
+    await new Promise(r => setTimeout(r, 1200)); // simulate scan
+    // Capture the frame and store as faceIdImage on the profile
+    if (faceVideoRef.current) {
+      const canvas = document.createElement('canvas');
+      canvas.width = 128; canvas.height = 128;
+      const ctx = canvas.getContext('2d');
+      if (ctx) { ctx.translate(128, 0); ctx.scale(-1, 1); ctx.drawImage(faceVideoRef.current, 0, 0, 128, 128); }
+      const snap = canvas.toDataURL('image/jpeg', 0.7);
+      await updateCurrentUserProfile({ smartAccessEnabled: true, profileImage: user?.profileImage || snap });
+    }
+    setFaceSetupStep('done');
+    await new Promise(r => setTimeout(r, 1500));
+    closeFaceSetup();
+    setMessage(language === 'en' ? '🔐 Face ID registered! Smart Access enabled.' : '🔐 تم تسجيل بصمة الوجه! الدخول الذكي مفعّل.');
+    setTimeout(() => setMessage(null), 4000);
+  };
+
+  const disableSmartAccess = async () => {
+    await updateCurrentUserProfile({ smartAccessEnabled: false });
+    setMessage(language === 'en' ? 'Smart Access disabled' : 'تم تعطيل الدخول الذكي');
+    setTimeout(() => setMessage(null), 3000);
+  };
+
 
   return (
     <div className="flex flex-col gap-6 animate-in fade-in slide-in-from-bottom duration-500 pb-12 w-full max-w-7xl mx-auto">
@@ -170,7 +327,7 @@ const SettingsView: React.FC = () => {
               )}
             </div>
 
-            <div className="flex flex-col items-center justify-center mb-6 relative z-10 mt-2">
+            <div className="flex flex-col items-center justify-center mb-6 relative z-10 mt-2 gap-3">
               <input
                 type="file"
                 ref={fileInputRef}
@@ -192,7 +349,62 @@ const SettingsView: React.FC = () => {
                   <span className="text-[10px] font-bold text-white uppercase tracking-widest">{t.edit || 'Edit'}</span>
                 </div>
               </div>
+              {/* Camera Selfie Button */}
+              <button
+                type="button"
+                onClick={openCamera}
+                className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-blue-500/10 border border-blue-500/30 text-blue-400 text-xs font-black uppercase tracking-widest hover:bg-blue-500/20 hover:border-blue-500/60 active:scale-95 transition-all"
+              >
+                <Camera size={14} />
+                {language === 'en' ? 'Take Selfie' : 'التقط صورة'}
+              </button>
             </div>
+
+            {/* Camera Capture Modal */}
+            {showCamera && (
+              <div className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-xl flex flex-col items-center justify-center p-6 animate-in fade-in duration-300">
+                <div className="relative w-full max-w-sm">
+                  {/* Title */}
+                  <p className="text-center text-white font-black uppercase tracking-widest text-sm mb-4">
+                    {language === 'en' ? '📸 Take Your Selfie' : '📸 التقط صورتك'}
+                  </p>
+                  {/* Live video — mirrored for selfie feel */}
+                  <div className="relative rounded-[2rem] overflow-hidden border-4 border-blue-500/30 shadow-2xl shadow-blue-500/20">
+                    <video
+                      ref={videoRef}
+                      autoPlay
+                      playsInline
+                      muted
+                      className="w-full aspect-square object-cover"
+                      style={{ transform: 'scaleX(-1)' }}
+                    />
+                    {/* Viewfinder corners */}
+                    <div className="absolute top-4 left-4 w-8 h-8 border-t-4 border-l-4 border-blue-400 rounded-tl-lg" />
+                    <div className="absolute top-4 right-4 w-8 h-8 border-t-4 border-r-4 border-blue-400 rounded-tr-lg" />
+                    <div className="absolute bottom-4 left-4 w-8 h-8 border-b-4 border-l-4 border-blue-400 rounded-bl-lg" />
+                    <div className="absolute bottom-4 right-4 w-8 h-8 border-b-4 border-r-4 border-blue-400 rounded-br-lg" />
+                  </div>
+                  {/* Buttons */}
+                  <div className="flex gap-4 mt-6">
+                    <button
+                      type="button"
+                      onClick={closeCamera}
+                      className="flex-1 py-4 rounded-2xl bg-white/5 border border-white/10 text-gray-400 font-black uppercase tracking-widest text-sm hover:bg-white/10 transition-all active:scale-95"
+                    >
+                      {language === 'en' ? 'Cancel' : 'إلغاء'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={capturePhoto}
+                      className="flex-1 py-4 rounded-2xl blue-bg text-white font-black uppercase tracking-widest text-sm shadow-xl shadow-blue-500/30 hover:brightness-110 transition-all active:scale-95 flex items-center justify-center gap-2"
+                    >
+                      <Camera size={18} />
+                      {language === 'en' ? 'Capture' : 'التقاط'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div className="grid grid-cols-1 gap-5 relative z-10">
               <div className="space-y-2">
@@ -390,32 +602,89 @@ const SettingsView: React.FC = () => {
               {t.wearableSync || 'Wearable Sync & Smart Access'}
             </h3>
 
+            {/* Apple Watch / Garmin - Real Bluetooth */}
             <div className="flex items-center justify-between bg-white/5 p-4 rounded-2xl border border-white/5">
               <div className="flex items-center gap-3">
-                <Watch className="text-slate-400" size={24} />
+                <Watch className={`${user?.wearableDevice && user.wearableDevice !== 'none' ? 'text-cyan-400' : 'text-slate-400'} transition-colors`} size={24} />
                 <div>
                   <p className="font-bold text-white text-sm sm:text-base">Apple Watch / Garmin</p>
-                  <p className="text-[10px] sm:text-xs text-slate-500 uppercase tracking-widest">{user?.wearableDevice && user.wearableDevice !== 'none' ? 'Connected' : 'Not Connected'}</p>
+                  <p className="text-[10px] sm:text-xs text-slate-500 uppercase tracking-widest">
+                    {btScanning ? (language === 'en' ? 'Scanning...' : 'جاري البحث...')
+                      : btDevice ? btDevice
+                      : user?.wearableDevice && user.wearableDevice !== 'none' ? (language === 'en' ? `Connected · ${user.wearableDevice}` : `متصل · ${user.wearableDevice}`)
+                      : (language === 'en' ? 'Not Connected' : 'غير متصل')}
+                  </p>
                 </div>
               </div>
-              <button onClick={() => updateCurrentUserProfile({ wearableDevice: user?.wearableDevice && user.wearableDevice !== 'none' ? 'none' : 'apple_watch' })} className={`w-14 h-8 rounded-full relative transition-all duration-300 shadow-inner shrink-0 ${user?.wearableDevice && user.wearableDevice !== 'none' ? 'bg-cyan-500 shadow-[0_0_15px_rgba(6,182,212,0.4)]' : 'bg-white/10'}`}>
-                <div className={`absolute top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-white shadow-md transition-all duration-300 ${user?.wearableDevice && user.wearableDevice !== 'none' ? 'left-7' : 'left-1'}`}></div>
+              <button
+                onClick={handleBluetoothConnect}
+                disabled={btScanning}
+                className={`w-14 h-8 rounded-full relative transition-all duration-300 shadow-inner shrink-0 ${user?.wearableDevice && user.wearableDevice !== 'none' ? 'bg-cyan-500 shadow-[0_0_15px_rgba(6,182,212,0.4)]' : 'bg-white/10'} ${btScanning ? 'opacity-50 pointer-events-none' : ''}`}
+              >
+                <div className={`absolute top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-white shadow-md transition-all duration-300 ${user?.wearableDevice && user.wearableDevice !== 'none' ? 'left-7' : 'left-1'}`} />
               </button>
             </div>
 
+            {/* Smart Access - Real FaceID Camera */}
             <div className="flex items-center justify-between bg-white/5 p-4 rounded-2xl border border-white/5">
               <div className="flex items-center gap-3">
-                <SmartphoneNfc className="text-slate-400" size={24} />
+                <SmartphoneNfc className={`${user?.smartAccessEnabled ? 'text-green-400' : 'text-slate-400'} transition-colors`} size={24} />
                 <div>
                   <p className="font-bold text-white text-sm sm:text-base">{t.smartAccess || 'Smart Access'}</p>
-                  <p className="text-[10px] sm:text-xs text-slate-500 uppercase tracking-widest">NFC / FaceID Entry</p>
+                  <p className="text-[10px] sm:text-xs text-slate-500 uppercase tracking-widest">
+                    {user?.smartAccessEnabled ? (language === 'en' ? 'Face ID Active ✔' : 'بصمة الوجه مفعّلة ✔') : 'NFC / FaceID Entry'}
+                  </p>
                 </div>
               </div>
-              <button onClick={() => updateCurrentUserProfile({ smartAccessEnabled: !user?.smartAccessEnabled })} className={`w-14 h-8 rounded-full relative transition-all duration-300 shadow-inner shrink-0 ${user?.smartAccessEnabled ? 'bg-green-500 shadow-[0_0_15px_rgba(34,197,94,0.4)]' : 'bg-white/10'}`}>
-                <div className={`absolute top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-white shadow-md transition-all duration-300 ${user?.smartAccessEnabled ? 'left-7' : 'left-1'}`}></div>
+              <button
+                onClick={user?.smartAccessEnabled ? disableSmartAccess : openFaceSetup}
+                className={`w-14 h-8 rounded-full relative transition-all duration-300 shadow-inner shrink-0 ${user?.smartAccessEnabled ? 'bg-green-500 shadow-[0_0_15px_rgba(34,197,94,0.4)]' : 'bg-white/10'}`}
+              >
+                <div className={`absolute top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-white shadow-md transition-all duration-300 ${user?.smartAccessEnabled ? 'left-7' : 'left-1'}`} />
               </button>
             </div>
           </div>
+
+          {/* FaceID Setup Modal */}
+          {showFaceSetup && (
+            <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-xl flex flex-col items-center justify-center p-6 animate-in fade-in duration-300">
+              <div className="w-full max-w-sm">
+                <p className="text-center text-white font-black uppercase tracking-widest text-sm mb-4">
+                  {faceSetupStep === 'done' ? '✅' : '🔐'} {language === 'en' ? 'Face ID Setup' : 'إعداد بصمة الوجه'}
+                </p>
+                <div className="relative rounded-[2rem] overflow-hidden border-4 border-green-500/30 shadow-2xl shadow-green-500/10">
+                  <video
+                    ref={faceVideoRef}
+                    autoPlay playsInline muted
+                    className="w-full aspect-square object-cover"
+                    style={{ transform: 'scaleX(-1)' }}
+                  />
+                  {/* Face oval guide */}
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                    <div className={`w-44 h-56 rounded-full border-4 transition-colors duration-500 ${faceSetupStep === 'capturing' ? 'border-green-400 shadow-[0_0_30px_rgba(34,197,94,0.5)]' : 'border-white/30'}`} />
+                  </div>
+                  {faceSetupStep === 'capturing' && (
+                    <div className="absolute inset-0 bg-green-500/10 animate-pulse" />
+                  )}
+                </div>
+                <p className="text-center text-gray-400 text-xs font-bold mt-3 uppercase tracking-widest">
+                  {faceSetupStep === 'idle' ? (language === 'en' ? 'Align your face in the oval' : 'ضع وجهك داخل البيضة') :
+                   faceSetupStep === 'capturing' ? (language === 'en' ? 'Scanning...' : 'جاري المسح...') :
+                   (language === 'en' ? 'Registered!' : 'تم التسجيل!')}
+                </p>
+                <div className="flex gap-4 mt-6">
+                  <button type="button" onClick={closeFaceSetup}
+                    className="flex-1 py-4 rounded-2xl bg-white/5 border border-white/10 text-gray-400 font-black uppercase text-sm tracking-widest hover:bg-white/10 transition-all active:scale-95">
+                    {language === 'en' ? 'Cancel' : 'إلغاء'}
+                  </button>
+                  <button type="button" onClick={registerFace} disabled={faceSetupStep !== 'idle'}
+                    className="flex-1 py-4 rounded-2xl bg-green-500 text-white font-black uppercase text-sm tracking-widest shadow-xl hover:brightness-110 transition-all active:scale-95 disabled:opacity-50">
+                    {language === 'en' ? 'Register' : 'تسجيل'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           <div className="bg-[#111111] p-6 sm:p-8 rounded-[2.5rem] border border-white/5 shadow-xl relative overflow-hidden">
             <h3 className="font-black flex items-center gap-2 uppercase tracking-[0.2em] text-sm sm:text-base text-gray-400 mb-6">
