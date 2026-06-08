@@ -6,7 +6,7 @@ import { VitePWA } from 'vite-plugin-pwa';
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, '.', '');
   return {
-    base: mode === 'production' ? '/dolphingym/' : '/',
+    base: '/',
     build: { minify: false },
     server: {
       port: 3000,
