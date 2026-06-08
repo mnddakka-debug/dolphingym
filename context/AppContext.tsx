@@ -1,5 +1,5 @@
 
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import {
   Language, Theme, User, UserRole, Equipment,
   VideoContent, LiveSession, AttendanceRecord, WorkoutPlan,
@@ -9,6 +9,8 @@ import {
   MaintenanceReport, Lead, HelpRequest
 } from '../types';
 import { TRANSLATIONS } from '../constants';
+import { collection, addDoc, query, where, onSnapshot, updateDoc, doc } from 'firebase/firestore';
+import { db } from '../firebaseConfig';
 
 export interface AppMessage {
   id: string;
@@ -326,10 +328,67 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const sendMessage = (toId: string, toName: string, text: string) => {
     if (!user) return;
-    setMessages(prev => [...prev, { id: Math.random().toString(36).substr(2, 9), fromId: user.id, fromName: user.name, toId, text, timestamp: new Date().toISOString(), read: false }]);
+    addDoc(collection(db, 'messages'), {
+      fromId: user.id,
+      fromName: user.name,
+      toId,
+      text,
+      timestamp: new Date().toISOString(),
+      read: false
+    }).catch(err => console.error('Error sending message:', err));
   };
-  const markMessageRead = (id: string) => setMessages(prev => prev.map(m => m.id === id ? { ...m, read: true } : m));
+
+  const markMessageRead = (id: string) => {
+    updateDoc(doc(db, 'messages', id), { read: true }).catch(() => {});
+    setMessages(prev => prev.map(m => m.id === id ? { ...m, read: true } : m));
+  };
+
   const getUnreadCount = () => { if (!user) return 0; return messages.filter(m => m.toId === user.id && !m.read).length; };
+
+  // Real-time Firestore listener for messages
+  const seenMsgIds = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (!user?.id) return;
+    seenMsgIds.current = new Set();
+
+    // Listen to messages RECEIVED by current user
+    const qIn = query(collection(db, 'messages'), where('toId', '==', user.id));
+    const unsubIn = onSnapshot(qIn, (snap) => {
+      const received: AppMessage[] = snap.docs.map(d => ({ id: d.id, ...(d.data() as Omit<AppMessage, 'id'>) }));
+      // Browser notifications for newly received messages
+      received.forEach(msg => {
+        if (!seenMsgIds.current.has(msg.id)) {
+          seenMsgIds.current.add(msg.id);
+          if (!msg.read) {
+            sendBrowserNotification(
+              `رسالة جديدة من ${msg.fromName}`,
+              msg.text
+            );
+          }
+        }
+      });
+      setMessages(prev => {
+        const sentOnly = prev.filter(m => m.fromId === user.id);
+        const merged = [...sentOnly, ...received];
+        const unique = merged.filter((m, i, arr) => arr.findIndex(x => x.id === m.id) === i);
+        return unique;
+      });
+    });
+
+    // Listen to messages SENT by current user
+    const qOut = query(collection(db, 'messages'), where('fromId', '==', user.id));
+    const unsubOut = onSnapshot(qOut, (snap) => {
+      const sent: AppMessage[] = snap.docs.map(d => ({ id: d.id, ...(d.data() as Omit<AppMessage, 'id'>) }));
+      setMessages(prev => {
+        const receivedOnly = prev.filter(m => m.toId === user.id);
+        const merged = [...sent, ...receivedOnly];
+        const unique = merged.filter((m, i, arr) => arr.findIndex(x => x.id === m.id) === i);
+        return unique;
+      });
+    });
+
+    return () => { unsubIn(); unsubOut(); };
+  }, [user?.id]);
 
   const joinLiveSession = (id: string) => {
     if (!user) return;
