@@ -6,6 +6,8 @@ import { VitePWA } from 'vite-plugin-pwa';
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, '.', '');
   return {
+    base: mode === 'production' ? '/dolphingym/' : '/',
+    build: { minify: false },
     server: {
       port: 3000,
       host: '0.0.0.0',
@@ -43,7 +45,10 @@ export default defineConfig(({ mode }) => {
           ]
         },
         workbox: {
-          maximumFileSizeToCacheInBytes: 3000000 // 3 MB
+          maximumFileSizeToCacheInBytes: 10000000, // 10 MB
+          skipWaiting: true,
+          clientsClaim: true,
+          runtimeCaching: []
         }
       })
     ],

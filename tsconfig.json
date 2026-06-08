@@ -25,5 +25,6 @@
     },
     
     // Remove noEmit to allow output
-  }
+  },
+  "exclude": ["node_modules", "dist", "backend-dist", "ai-backend", "**/*.cjs", "**/*.mjs", "**/*.js"]
 }
