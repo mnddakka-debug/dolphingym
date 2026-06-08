@@ -57,34 +57,35 @@ const AIFormView: React.FC = () => {
 
         const getFormFeedback = async () => {
             let reply: string | null = null;
-            try {
-                const res = await fetch('/api/ai/v1/chat/completions', {
-                    method: 'POST', headers: { 'Content-Type': 'application/json' },
-                    signal: AbortSignal.timeout(4000),
-                    body: JSON.stringify({ model: 'keyless-gpt-4o-mini', messages: [{ role: 'user', content: systemPrompt }], stream: false })
-                });
-                if (res.ok) { const d = await res.json(); reply = d.choices[0].message.content; }
-            } catch { /* fall through */ }
 
-            if (!reply) {
-                const apiKey = (import.meta as any).env?.VITE_GEMINI_API_KEY;
-                if (apiKey && apiKey !== 'PLACEHOLDER_API_KEY') {
-                    try {
-                        const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
-                            method: 'POST', headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ contents: [{ role: 'user', parts: [{ text: systemPrompt }] }] })
-                        });
-                        if (r.ok) { const d = await r.json(); reply = d.candidates?.[0]?.content?.parts?.[0]?.text || null; }
-                    } catch { /* ignore */ }
+            // Use Pollinations AI — free, no key, works on Netlify
+            try {
+                const res = await fetch('https://text.pollinations.ai/openai', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        model: 'openai',
+                        messages: [{ role: 'user', content: systemPrompt }],
+                        temperature: 0.8,
+                        max_tokens: 120,
+                        stream: false,
+                        private: true
+                    })
+                });
+                if (res.ok) {
+                    const d = await res.json();
+                    reply = d.choices?.[0]?.message?.content || null;
                 }
-            }
+            } catch { /* fall through */ }
 
             if (!isMounted) return;
             if (reply) {
                 setFeedback({ status: 'warning', message: reply });
-                setTimeout(() => { if (isMounted) setFeedback({ status: 'good', message: language === 'en' ? 'Form corrected! Perfect execution. Keep it up.' : 'تم تصحيح الأداء! تنفيذ مثالي. استمر.' }); }, 8000);
+                setTimeout(() => {
+                    if (isMounted) setFeedback({ status: 'good', message: language === 'en' ? 'Form corrected! Perfect execution. Keep it up 💪' : 'تم تصحيح الأداء! تنفيذ مثالي. استمر 💪' });
+                }, 8000);
             } else {
-                setFeedback({ status: 'warning', message: language === 'en' ? 'AI Vision analyzing your form...' : 'نظام الرؤية الذكي يحلل أداءك...' });
+                setFeedback({ status: 'warning', message: language === 'en' ? 'AI is analyzing your form, please hold your position...' : 'الذكاء الاصطناعي يحلل أداءك، ثبّت وضعيتك...' });
             }
         };
 
