@@ -2,7 +2,7 @@
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { TRANSLATIONS } from '../constants';
-import { Users, Package, Globe, LogOut, X, Calendar, UserPlus, Bell, Search, Edit2, Trash2, RefreshCw, CheckCircle, AlertCircle, Clock, Send, Banknote, CreditCard, ShieldAlert, Key, Mail, Plus, Hammer, Trash, Info, TrendingUp, DollarSign, HelpCircle, Hash } from 'lucide-react';
+import { Users, Package, Globe, LogOut, X, Calendar, UserPlus, Bell, Search, Edit2, Trash2, RefreshCw, CheckCircle, AlertCircle, Clock, Send, Banknote, CreditCard, ShieldAlert, Key, Mail, Plus, Hammer, Trash, Info, TrendingUp, DollarSign, HelpCircle, Hash, Trophy } from 'lucide-react';
 import { User, PaymentMethod, Equipment, EquipmentStatus, EquipmentCategory } from '../types';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 

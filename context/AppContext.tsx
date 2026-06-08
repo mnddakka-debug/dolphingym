@@ -6,7 +6,7 @@ import {
   WeightEntry, Reward, RedemptionRecord, Message, AppNotification,
   Challenge, ChallengeEntry, TrainerPlan, Transaction, SocialPost,
   TrainerShift, PayrollRecord, GymSquad, ProgressPhoto, MatchRequest,
-  MaintenanceReport, Lead
+  MaintenanceReport, Lead, HelpRequest
 } from '../types';
 import { TRANSLATIONS } from '../constants';
 

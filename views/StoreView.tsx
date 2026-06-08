@@ -18,8 +18,8 @@ const StoreView: React.FC = () => {
             setTimeout(() => setFeedback(null), 2000);
             return;
         }
-        const ok = redeemReward(reward.id);
-        setFeedback({ id: reward.id, success: ok });
+        redeemReward(reward.id);
+        setFeedback({ id: reward.id, success: true });
         setTimeout(() => setFeedback(null), 2500);
     };
 

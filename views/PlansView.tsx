@@ -52,7 +52,7 @@ const PlansView: React.FC = () => {
     const handleLogWeight = () => {
         const w = parseFloat(newWeight);
         if (isNaN(w) || w <= 0) return;
-        addWeightEntry(w);
+        addWeightEntry({ weightKg: w });
         setNewWeight('');
     };
 

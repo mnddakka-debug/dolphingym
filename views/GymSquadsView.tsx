@@ -30,7 +30,7 @@ const GymSquadsView: React.FC = () => {
                     {language === 'en' ? 'Gym Squads' : 'فِرق النادي'}
                 </h1>
                 {user?.squadId ? (
-                    <button onClick={leaveSquad} className="bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 transition-all">
+                    <button onClick={() => user.squadId && leaveSquad(user.squadId)} className="bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 transition-all">
                         <LogOut size={16} />
                         {language === 'en' ? 'Leave Squad' : 'مغادرة الفريق'}
                     </button>

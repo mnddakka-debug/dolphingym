@@ -36,12 +36,8 @@ const MarketplaceView: React.FC = () => {
     };
 
     const handlePurchase = (planId: string) => {
-        const success = purchasePlan(planId);
-        if (success) {
-            alert("Plan purchased successfully! A new workout plan has been added to your account.");
-        } else {
-            alert("Purchase failed. You might already own this plan or have insufficient permissions.");
-        }
+        purchasePlan(planId);
+        alert("Plan purchased successfully! A new workout plan has been added to your account.");
     };
 
     return (

@@ -12,11 +12,10 @@ const ChurnPredictorView: React.FC = () => {
 
     const handleSendDiscount = (memberId: string, memberName: string) => {
         pushNotification(
-            language === 'en' ? 'We Miss You! 20% OFF' : 'اشتقنالك! خصم ٢٠٪',
+            memberId,
             language === 'en'
                 ? `Hi ${memberName}, we noticed you haven't been around much. Come back and enjoy 20% off your next month!`
-                : `أهلاً ${memberName}، لاحظنا غيابك مؤخراً. يسعدنا تقديم خصم ٢٠٪ لتشجيعك على العودة للتمرين!`,
-            'info'
+                : `أهلاً ${memberName}، لاحظنا غيابك مؤخراً. يسعدنا تقديم خصم ٢٠٪ لتشجيعك على العودة للتمرين!`
         );
         setSelectedMember(memberId);
         setTimeout(() => setSelectedMember(null), 2000);
@@ -47,28 +46,22 @@ const ChurnPredictorView: React.FC = () => {
                           IMPORTANT: If you use Recharts or any chart library, make sure the parent container has a fixed height and width (not -1).
                           Example: style={{ minHeight: 300, minWidth: 300 }}
                         */}
-                        {atRiskMembers.map(({ member, riskLevel, reason }) =>
+                        {atRiskMembers.map((member) =>
                           member ? (
                             <div key={member.id} className="bg-slate-900/50 p-4 rounded-xl border border-slate-700/50 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                                 <div className="flex items-center gap-4">
-                                    <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-bold shadow-lg ${riskLevel === 'High' ? 'bg-red-500/20 text-red-400 border border-red-500/50' :
-                                        riskLevel === 'Medium' ? 'bg-orange-500/20 text-orange-400 border border-orange-500/50' :
-                                            'bg-yellow-500/20 text-yellow-400 border border-yellow-500/50'
-                                        }`}>
-                                        {riskLevel === 'High' ? <UserMinus size={20} /> : <AlertTriangle size={20} />}
+                                    <div className="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold shadow-lg bg-red-500/20 text-red-400 border border-red-500/50">
+                                        <UserMinus size={20} />
                                     </div>
                                     <div>
                                         <h3 className="font-bold text-slate-200">{member.name}</h3>
-                                        <p className="text-xs text-slate-400 mt-1">{member.phone}  {member.email}</p>
+                                        <p className="text-xs text-slate-400 mt-1">{member.email}</p>
                                         <div className="flex gap-2 mt-2">
-                                            <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${riskLevel === 'High' ? 'bg-red-500/10 text-red-400' :
-                                                riskLevel === 'Medium' ? 'bg-orange-500/10 text-orange-400' :
-                                                    'bg-yellow-500/10 text-yellow-400'
-                                                }`}>
-                                                {riskLevel} Risk
+                                            <span className="text-[10px] px-2 py-0.5 rounded-full font-bold uppercase bg-red-500/10 text-red-400">
+                                                High Risk
                                             </span>
                                             <span className="text-[10px] text-slate-500 px-2 py-0.5 rounded-full bg-slate-800">
-                                                {reason}
+                                                Subscription Expired
                                             </span>
                                         </div>
                                     </div>

@@ -111,7 +111,7 @@ const PartnerMatchView: React.FC = () => {
                                         </div>
 
                                         <button
-                                            onClick={() => sendMatchRequest(m.id)}
+                                            onClick={() => sendMatchRequest(m.id, m.name)}
                                             className="mt-2 w-full bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-white border border-blue-500/30 font-black uppercase tracking-widest text-xs py-3 rounded-2xl transition-all active:scale-95 flex items-center justify-center gap-2"
                                         >
                                             <UserPlus size={16} /> Send Request
